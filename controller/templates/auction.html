@@ -1,0 +1,465 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+{% block content %}
+<audio id="coin-sound" src="{% static 'Money Sound Effect.mp3' %}" preload="auto"></audio>
+
+<h1 style="text-align: center;">Select Your Team mates</h1>
+
+<!-- Selection Round Status Banner -->
+<div id="selection-round-banner"
+    style="display: none; padding: 15px; border-radius: 12px; margin: 0 auto 20px auto; max-width: 800px; text-align: center; font-family: var(--font-body); font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: all 0.3s ease;">
+    <span id="selection-round-status"></span>
+    <button id="skip-turn-btn" onclick="skipMyTurn()"
+        style="display: none; margin-left: 15px; padding: 8px 16px; font-size: 0.85rem; font-weight: 700; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; border-radius: 6px; color: white; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">Skip My Turn</button>
+</div>
+
+<div class="allstudentbox" id="student-list">
+    {% include 'partials/student_list.html' %}
+</div>
+
+<!-- Custom Bidding Modal -->
+<div id="bid-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(10, 5, 20, 0.88); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; font-family: var(--font-body);">
+    <div
+        style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 35px; border-radius: 16px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); position: relative;">
+
+        <div
+            style="font-size: 0.85rem; color: var(--accent-primary-hover); font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">
+            Place Bidding Points
+        </div>
+
+        <h3 id="bid-modal-student-name"
+            style="font-family: var(--font-display); font-size: 1.8rem; margin: 0 0 5px 0; color: #fff; font-weight: 800;">
+            Student Name
+        </h3>
+        <p style="color: var(--text-muted); margin: 0 0 10px 0; font-size: 0.95rem;">
+            Select bid amount for teammate assignment
+        </p>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0 0 25px 0;">
+            Your Available Budget: <strong style="color: #3B82F6;" id="leader-available-budget">0 rs</strong>
+        </p>
+
+        <!-- Interactive Bid Value Display -->
+        <div
+            style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 10px; margin-bottom: 25px;">
+            <div
+                style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">
+                Bidding Amount</div>
+            <div id="current-bid-value" style="font-size: 2.5rem; font-weight: 800; color: #10B981; line-height: 1.1;">
+                1,00,000
+            </div>
+        </div>
+
+        <!-- Increment buttons -->
+        <div
+            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; text-align: left;">
+            Add Cash Increments</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 30px;">
+            <button type="button" onclick="adjustBid(1000)"
+                style="padding: 12px 5px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+1K</button>
+            <button type="button" onclick="adjustBid(10000)"
+                style="padding: 12px 5px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+10K</button>
+            <button type="button" onclick="adjustBid(50000)"
+                style="padding: 12px 5px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+50K</button>
+            <button type="button" onclick="adjustBid(100000)"
+                style="padding: 12px 5px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+1Lakh</button>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 12px;">
+            <button type="button" onclick="closeBidModal()"
+                style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fff; cursor: pointer; font-size: 0.95rem; font-weight: 500;">Cancel</button>
+            <button type="button" onclick="submitBidModal()"
+                style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: var(--accent-primary); color: #fff; cursor: pointer; font-size: 0.95rem; font-weight: 600;">Confirm
+                Assignment</button>
+        </div>
+    </div>
+</div>
+
+<!-- Dedicated Active Bidding War Modal -->
+<div id="active-bid-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(10, 5, 20, 0.9); backdrop-filter: blur(8px); z-index: 10005; align-items: center; justify-content: center; font-family: var(--font-body);">
+    <div
+        style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(59, 130, 246, 0.25); padding: 35px; border-radius: 16px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2); position: relative;">
+        
+        <div style="position: absolute; top: 15px; right: 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">
+            LIVE AUCTION
+        </div>
+
+        <div style="font-size: 0.85rem; color: #3B82F6; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">
+            Active Bidding War
+        </div>
+
+        <h3 id="active-bid-student-name"
+            style="font-family: var(--font-display); font-size: 1.8rem; margin: 0 0 5px 0; color: #fff; font-weight: 800;">
+            Student Name
+        </h3>
+        <p style="color: var(--text-muted); margin: 0 0 15px 0; font-size: 0.95rem;">
+            Current Highest Bidder: <strong style="color: #10B981;" id="active-bid-winner-house">-</strong>
+        </p>
+
+        <!-- Current Bid Value Display -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 10px; margin-bottom: 20px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">
+                Current Highest Bid</div>
+            <div id="active-bid-current-value" style="font-size: 2.2rem; font-weight: 800; color: #F59E0B; line-height: 1.1;">
+                0 rs
+            </div>
+        </div>
+
+        <!-- Timer progress / display -->
+        <div style="margin-bottom: 25px;">
+            <div id="active-bid-timer" style="font-size: 1.2rem; font-weight: 800; color: #EF4444; margin-bottom: 8px;">
+                Time Left: 10.0s
+            </div>
+            <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div id="active-bid-progress" style="width: 100%; height: 100%; background: linear-gradient(90deg, #EF4444, #F59E0B); transition: width 0.1s linear;"></div>
+            </div>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; text-align: left;">
+            Your Available Budget: <strong style="color: #3B82F6;" id="active-bid-leader-budget">0 rs</strong>
+        </p>
+
+        <!-- Bidding Increments Buttons -->
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px;">
+            <button type="button" onclick="placeIncrementBid(5000)"
+                style="padding: 12px 2px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+5K</button>
+            <button type="button" onclick="placeIncrementBid(10000)"
+                style="padding: 12px 2px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+10K</button>
+            <button type="button" onclick="placeIncrementBid(20000)"
+                style="padding: 12px 2px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+20K</button>
+            <button type="button" onclick="placeIncrementBid(50000)"
+                style="padding: 12px 2px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+50K</button>
+            <button type="button" onclick="placeIncrementBid(100000)"
+                style="padding: 12px 2px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">+1Lakh</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function unlockAudio() {
+        const sound = document.getElementById("coin-sound");
+        if (sound) {
+            sound.play().then(() => {
+                sound.pause();
+                sound.currentTime = 0;
+            }).catch(e => console.log("Audio unlock failed:", e));
+        }
+        window.removeEventListener('click', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+    }
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+
+    function playCoinSound() {
+        try {
+            const sound = document.getElementById("coin-sound");
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => {
+                    console.warn("Audio playback prevented by browser:", e);
+                });
+            }
+        } catch (e) {
+            console.warn("Error playing audio element:", e);
+        }
+    }
+
+    let biddingMode = {% if bidding_mode %}true{% else %} false{% endif %};
+    let minBidAmount = Number("{{ min_bid_amount|default:100000 }}");
+    let leaderAmount = Number("{{ leader_amount|default:0 }}");
+    let bidConfirmationDuration = Number("{{ bid_confirmation_duration|default:10 }}");
+    let activeStudentId = null;
+    let activeStudentButton = null;
+    let currentBidAmount = minBidAmount;
+
+    let selectionRoundActive = false;
+    let currentRound = 1;
+    let currentTurnLeaderName = "";
+    let isMyTurn = false;
+
+    function confirmAssign(studentId, button, studentName) {
+        if (biddingMode) {
+            activeStudentId = studentId;
+            activeStudentButton = button;
+            currentBidAmount = minBidAmount;
+
+            document.getElementById("leader-available-budget").textContent = leaderAmount.toLocaleString('en-IN') + " rs";
+            document.getElementById("bid-modal-student-name").textContent = studentName;
+            updateBidDisplay();
+            document.getElementById("bid-modal").style.display = "flex";
+        } else {
+            if (confirm(`Are you sure you want to assign ${studentName}?`)) {
+                assignStudent(studentId, button);
+            }
+        }
+    }
+
+    function updateBidDisplay() {
+        const valueEl = document.getElementById("current-bid-value");
+        valueEl.textContent = currentBidAmount.toLocaleString('en-IN') + " rs";
+        if (currentBidAmount > leaderAmount) {
+            valueEl.style.color = "#EF4444";
+        } else {
+            valueEl.style.color = "#10B981";
+        }
+    }
+
+    function adjustBid(amount) {
+        currentBidAmount += amount;
+        updateBidDisplay();
+    }
+
+    function closeBidModal() {
+        document.getElementById("bid-modal").style.display = "none";
+        activeStudentId = null;
+        activeStudentButton = null;
+    }
+
+    function submitBidModal() {
+        if (activeStudentId !== null) {
+            if (currentBidAmount > leaderAmount) {
+                alert(`Insufficient budget! You only have ${leaderAmount.toLocaleString('en-IN')} rs left.`);
+                return;
+            }
+            assignStudent(activeStudentId, activeStudentButton, currentBidAmount);
+            closeBidModal();
+        }
+    }
+
+    function assignStudent(studentId, button, bidPoints) {
+        const params = new URLSearchParams();
+        params.append('student_id', studentId);
+        if (bidPoints !== undefined) {
+            params.append('bid', bidPoints);
+        }
+
+        fetch("{% url 'assign_student' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: params
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const box = document.getElementById("student-" + studentId);
+                    if (box) box.remove();
+                    if (data.new_budget !== undefined && data.new_budget !== null) {
+                        leaderAmount = data.new_budget;
+                    }
+                    refreshStudentList();
+                } else {
+                    alert("Error: " + (data.error || "Unknown error occurred"));
+                }
+            })
+            .catch(err => {
+                console.error("Fetch error:", err);
+                alert("Something went wrong while assigning the student.");
+            });
+    }
+
+    function skipMyTurn() {
+        if (confirm("Are you sure you want to skip your turn in this round?")) {
+            fetch("{% url 'skip_turn' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    refreshStudentList();
+                } else {
+                    alert("Error: " + (data.error || "Could not skip turn."));
+                }
+            })
+            .catch(err => {
+                console.error("Error skipping turn:", err);
+            });
+        }
+    }
+
+    let activeAuctionStudentId = null;
+    let activeAuctionCurrentBid = 0;
+
+    function refreshStudentList() {
+        fetch("{% url 'unassigned_students_partial' %}")
+            .then(res => {
+                if (res.ok) {
+                    const bidModeHeader = res.headers.get('X-Bidding-Mode');
+                    const minBidHeader = res.headers.get('X-Min-Bid-Amount');
+                    const leaderAmountHeader = res.headers.get('X-Leader-Amount');
+                    const durationHeader = res.headers.get('X-Bid-Confirmation-Duration');
+                    
+                    const activeStudentIdHeader = res.headers.get('X-Active-Bid-Student-Id');
+                    const activeStudentNameHeader = res.headers.get('X-Active-Bid-Student-Name');
+                    const activeBidAmountHeader = res.headers.get('X-Active-Bid-Amount');
+                    const activeTimeLeftHeader = res.headers.get('X-Active-Bid-Time-Left');
+                    const activeWinnerHouseHeader = res.headers.get('X-Active-Bid-Winner-House');
+
+                    const roundActiveHeader = res.headers.get('X-Selection-Round-Active');
+                    const currentRoundHeader = res.headers.get('X-Current-Round');
+                    const currentTurnLeaderNameHeader = res.headers.get('X-Current-Turn-Leader-Name');
+                    const isMyTurnHeader = res.headers.get('X-Is-My-Turn');
+
+                    if (bidModeHeader !== null) {
+                        biddingMode = (bidModeHeader === 'true');
+                    }
+                    if (minBidHeader !== null) {
+                        minBidAmount = Number(minBidHeader);
+                    }
+                    if (leaderAmountHeader !== null) {
+                        leaderAmount = Number(leaderAmountHeader);
+                    }
+                    if (durationHeader !== null) {
+                        bidConfirmationDuration = Number(durationHeader);
+                    }
+
+                    if (roundActiveHeader !== null) {
+                        selectionRoundActive = (roundActiveHeader === 'true');
+                    }
+                    if (currentRoundHeader !== null) {
+                        currentRound = Number(currentRoundHeader);
+                    }
+                    if (currentTurnLeaderNameHeader !== null) {
+                        currentTurnLeaderName = currentTurnLeaderNameHeader;
+                    }
+                    if (isMyTurnHeader !== null) {
+                        isMyTurn = (isMyTurnHeader === 'true');
+                    }
+
+                    // Update Selection Round Banner
+                    const banner = document.getElementById("selection-round-banner");
+                    const statusText = document.getElementById("selection-round-status");
+                    const skipBtn = document.getElementById("skip-turn-btn");
+
+                    if (selectionRoundActive && !biddingMode) {
+                        banner.style.display = "block";
+                        if (isMyTurn) {
+                            banner.style.background = "rgba(16, 185, 129, 0.15)";
+                            banner.style.border = "1px solid rgba(16, 185, 129, 0.3)";
+                            banner.style.color = "#10B981";
+                            statusText.textContent = "🟢 It is your turn to select! Pick a student from the list.";
+                            skipBtn.style.display = "inline-block";
+                        } else {
+                            banner.style.background = "rgba(245, 158, 11, 0.15)";
+                            banner.style.border = "1px solid rgba(245, 158, 11, 0.3)";
+                            banner.style.color = "#F59E0B";
+                            statusText.textContent = `⏳ Round ${currentRound}: Waiting for ${currentTurnLeaderName} to select...`;
+                            skipBtn.style.display = "none";
+                        }
+                    } else {
+                        banner.style.display = "none";
+                    }
+
+                    // Handle active auction state
+                    if (biddingMode && activeStudentIdHeader !== null) {
+                        const newStudentId = Number(activeStudentIdHeader);
+                        const newBidAmount = Number(activeBidAmountHeader);
+                        
+                        if (activeAuctionStudentId === null) {
+                            playCoinSound();
+                        } else if (newStudentId === activeAuctionStudentId && newBidAmount > activeAuctionCurrentBid) {
+                            playCoinSound();
+                        } else if (newStudentId !== activeAuctionStudentId) {
+                            playCoinSound();
+                        }
+
+                        activeAuctionStudentId = newStudentId;
+                        activeAuctionCurrentBid = newBidAmount;
+
+                        document.getElementById("active-bid-student-name").textContent = activeStudentNameHeader;
+                        document.getElementById("active-bid-winner-house").textContent = activeWinnerHouseHeader;
+                        document.getElementById("active-bid-current-value").textContent = activeAuctionCurrentBid.toLocaleString('en-IN') + " rs";
+                        document.getElementById("active-bid-leader-budget").textContent = leaderAmount.toLocaleString('en-IN') + " rs";
+                        
+                        const timeLeft = parseFloat(activeTimeLeftHeader);
+                        document.getElementById("active-bid-timer").textContent = `Time Left: ${timeLeft.toFixed(1)}s`;
+                        
+                        const percent = (timeLeft / bidConfirmationDuration) * 100;
+                        document.getElementById("active-bid-progress").style.width = percent + "%";
+
+                        document.getElementById("active-bid-modal").style.display = "flex";
+                        document.getElementById("bid-modal").style.display = "none";
+                    } else {
+                        activeAuctionStudentId = null;
+                        activeAuctionCurrentBid = 0;
+                        document.getElementById("active-bid-modal").style.display = "none";
+                    }
+                }
+                return res.text();
+            })
+            .then(html => {
+                if (document.getElementById("bid-modal").style.display !== "flex") {
+                    document.getElementById("student-list").innerHTML = html;
+
+                    // Enforce turn restrictions on the frontend buttons
+                    if (selectionRoundActive && !biddingMode) {
+                        const buttons = document.querySelectorAll('#student-list button');
+                        buttons.forEach(btn => {
+                            if (!isMyTurn) {
+                                btn.disabled = true;
+                                btn.style.opacity = '0.4';
+                                btn.style.cursor = 'not-allowed';
+                            } else {
+                                btn.disabled = false;
+                                btn.style.opacity = '1';
+                                btn.style.cursor = 'pointer';
+                            }
+                        });
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching student list:", err);
+            });
+    }
+
+    function placeIncrementBid(increment) {
+        if (activeAuctionStudentId !== null) {
+            const nextBid = activeAuctionCurrentBid + increment;
+            if (nextBid > leaderAmount) {
+                alert(`Insufficient budget! You only have ${leaderAmount.toLocaleString('en-IN')} rs left.`);
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.append('student_id', activeAuctionStudentId);
+            params.append('bid', nextBid);
+
+            fetch("{% url 'assign_student' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    activeAuctionCurrentBid = nextBid;
+                    document.getElementById("active-bid-current-value").textContent = nextBid.toLocaleString('en-IN') + " rs";
+                } else {
+                    alert("Bidding Error: " + (data.error || "Unknown error"));
+                }
+            })
+            .catch(err => {
+                console.error("Bidding fetch error:", err);
+                alert("Something went wrong while placing your bid.");
+            });
+        }
+    }
+
+    setInterval(refreshStudentList, 1000);
+</script>
+
+{% endblock %}

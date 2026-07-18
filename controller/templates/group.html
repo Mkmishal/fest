@@ -1,0 +1,26 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+{% block content %}
+<div class="control_panel" style="max-width: 600px;">
+    <h1>Active Sessions</h1>
+    <p style="color: var(--text-muted); margin-bottom: 20px;">Live status of connected users and operators</p>
+    
+    <div id="online-users-box">
+        {% include 'partials/online_users.html' %}
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  function refreshOnlineUsers() {
+    $.ajax({
+      url: "{% url 'group' %}?ajax=1",
+      success: function(data) {
+        $('#online-users-box').html(data);
+      }
+    });
+  }
+
+  setInterval(refreshOnlineUsers, 5000); // every 5 seconds
+</script>
+{% endblock %}

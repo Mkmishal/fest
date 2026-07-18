@@ -1,0 +1,12 @@
+{% for house_name, students in grouped_students.items %}
+<div class="house-box">
+    <div class="house-title" data-count="{{ students|length }}">{{ house_name }}</div>
+    {% if students %}
+    {% for student in students %}
+    <div class="student-name">{{ student.name }}{% if student.amount %} ({{ student.amount }} Rs){% endif %}</div>
+    {% endfor %}
+    {% else %}
+    <div class="student-name" style="color: var(--text-muted);">No students</div>
+    {% endif %}
+</div>
+{% endfor %}

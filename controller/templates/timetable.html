@@ -1,0 +1,60 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+{% block content %}
+
+<div class="control_panel">
+    <h1>Time table Panel</h1>
+
+    <div class="tableholder">
+        <div class="timebox"></div>
+        <div class="timebox"></div>
+        <div class="timebox"></div>
+        <div class="timebox"></div>
+        <div class="timebox"></div>
+        <div class="timebox"></div>
+    </div>
+
+    <div class="boxholder">
+      {% for program in programs %}
+        <div class="box {{program.category}}-{{program.section}}"
+            draggable="true"
+            style="height: {{program.program_duration}}px;">
+            {{program.code}} <br>
+            {{program.name}}
+        </div>
+      {% endfor %}
+
+    </div>
+</div>
+<script>
+  const boxes = document.querySelectorAll('.box');
+  const racks = document.querySelectorAll('.timebox');
+
+  // Currently dragged element reference
+  let draggedBox = null;
+
+  boxes.forEach(box => {
+    box.addEventListener('dragstart', () => {
+      draggedBox = box;
+      box.classList.add('dragging');
+    });
+
+    box.addEventListener('dragend', () => {
+      draggedBox = null;
+      box.classList.remove('dragging');
+    });
+  });
+
+  racks.forEach(rack => {
+    rack.addEventListener('dragover', (e) => {
+      e.preventDefault(); // Allow drop
+    });
+
+    rack.addEventListener('drop', () => {
+      if (draggedBox) {
+        rack.appendChild(draggedBox);
+      }
+    });
+  });
+</script>
+{% endblock %}

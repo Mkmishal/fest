@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elegant Login</title>
+  <link rel="stylesheet" href="{% static 'style/styles.css' %}" />
+</head>
+
+<body>
+  <div class="login-wrapper">
+    <div class="login-box">
+      <h1 class="title">Welcome</h1>
+      <p class="subtitle">Login to your account</p>
+
+      <form class="login-form" method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <label for="email">Username</label>
+        <input type="text" name="username" placeholder="Username" required />
+
+        <label for="password">Password</label>
+        <input type="password" name="password" placeholder="••••••••" required />
+
+        <div class="form-options">
+          <label class="remember-me">
+            <input type="checkbox" /> Remember me
+          </label>
+          <a href="#" class="forgot-link">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="login-button">Sign In</button>
+      </form>
+
+      <p class="signup-text">
+        Don’t have an account? <a href="#">Sign up</a>
+      </p>
+      <p>{{ error_message }}</p>
+    </div>
+  </div>
+</body>
+</html>

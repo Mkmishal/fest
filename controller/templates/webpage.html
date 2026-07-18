@@ -1,0 +1,365 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live board - Houses</title>
+    <link rel="stylesheet" href="{% static 'style/styles.css' %}">
+</head>
+
+<body>
+    <audio id="coin-sound" src="{% static 'Money Sound Effect.mp3' %}" preload="auto"></audio>
+    <nav>
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="{% static 'images/white.png' %}" alt="Logo">
+            </div>
+            <div class="nav-links">
+                <a href="{% url 'login' %}"
+                    style="background: var(--accent-primary); color: #fff; padding: 8px 20px; border-radius: 8px; font-weight: 600;">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main_area" style="padding-top: 40px;">
+        <h1 style="font-size: 3rem; margin-top: 20px;">House board</h1>
+        <p style="text-align: center; color: var(--text-muted); margin-bottom: 30px;">Real-time auction assignments
+            status</p>
+
+        <div class="houses-container">
+            {% include "partials/houses.html" %}
+        </div>
+    </main>
+
+    <script>
+        function unlockAudio() {
+            const sound = document.getElementById("coin-sound");
+            if (sound) {
+                sound.play().then(() => {
+                    sound.pause();
+                    sound.currentTime = 0;
+                }).catch(e => console.log("Audio unlock failed:", e));
+            }
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+            window.removeEventListener('touchstart', unlockAudio);
+        }
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('keydown', unlockAudio);
+        window.addEventListener('touchstart', unlockAudio);
+
+        function playCoinSound() {
+            try {
+                const sound = document.getElementById("coin-sound");
+                if (sound) {
+                    sound.currentTime = 0;
+                    sound.play().catch(e => {
+                        console.warn("Audio playback prevented by browser:", e);
+                    });
+                }
+            } catch (e) {
+                console.warn("Error playing audio element:", e);
+            }
+        }
+
+        let previousStudentMap = new Map();
+        let activeBiddingCard = null;
+        let biddingMode = false;
+
+        function findStudentDiv(houseName, studentName) {
+            const houseBoxes = document.querySelectorAll(".house-box");
+            for (let box of houseBoxes) {
+                const title = box.querySelector(".house-title")?.textContent?.trim();
+                if (title === houseName) {
+                    const studentDivs = box.querySelectorAll(".student-name");
+                    for (let div of studentDivs) {
+                        if (div.textContent.trim().startsWith(studentName)) {
+                            return div;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function refreshHouses() {
+            let activeStudentIdHeader = null;
+            let activeStudentNameHeader = null;
+            let activeBidAmountHeader = null;
+            let activeTimeLeftHeader = null;
+            let activeWinnerHouseHeader = null;
+
+            fetch("{% url 'grouped_students_partial' %}")
+                .then(res => {
+                    if (res.ok) {
+                        const bidModeHeader = res.headers.get('X-Bidding-Mode');
+                        if (bidModeHeader !== null) {
+                            biddingMode = (bidModeHeader === 'true');
+                        }
+
+                        const auctionActiveHeader = res.headers.get('X-Auction-Active');
+                        const auctionActive = (auctionActiveHeader === 'true');
+
+                        activeStudentIdHeader = res.headers.get('X-Active-Bid-Student-Id');
+                        activeStudentNameHeader = res.headers.get('X-Active-Bid-Student-Name');
+                        activeBidAmountHeader = res.headers.get('X-Active-Bid-Amount');
+                        activeTimeLeftHeader = res.headers.get('X-Active-Bid-Time-Left');
+                        activeWinnerHouseHeader = res.headers.get('X-Active-Bid-Winner-House');
+
+                        if (auctionActive && biddingMode && activeStudentIdHeader !== null) {
+                            const newBid = Number(activeBidAmountHeader);
+                            const timeLeft = parseFloat(activeTimeLeftHeader);
+
+                            if (!activeBiddingCard) {
+                                const floater = document.createElement('div');
+                                floater.className = 'auction-draft-floater show';
+                                floater.id = 'active-floater';
+                                floater.style.left = '50vw';
+                                floater.style.top = '50vh';
+                                floater.style.transition = 'all 0.3s ease';
+                                floater.innerHTML = `
+                                    <div class="draft-badge" style="background: #F59E0B; color: #fff;">LIVE BIDDING WAR</div>
+                                    <div class="draft-student" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 8px;">${activeStudentNameHeader}</div>
+                                    <div class="draft-house" id="active-floater-house" style="font-size: 1.2rem; font-weight: 600; color: #60A5FA; margin-bottom: 12px;">Current Leader: ${activeWinnerHouseHeader}</div>
+                                    <div id="active-floater-bid" style="font-size: 2.5rem; font-weight: 800; color: #F59E0B; margin-bottom: 15px; transition: transform 0.2s ease;">${newBid.toLocaleString('en-IN')} rs</div>
+                                    <div id="active-floater-timer" style="font-size: 1.2rem; font-weight: 800; color: #EF4444; background: rgba(239, 68, 68, 0.1); padding: 8px 24px; border-radius: 20px; display: inline-block; border: 1px solid rgba(239, 68, 68, 0.2);">Time Left: ${timeLeft.toFixed(1)}s</div>
+                                `;
+                                document.body.appendChild(floater);
+
+                                playCoinSound();
+
+                                activeBiddingCard = {
+                                    el: floater,
+                                    studentId: Number(activeStudentIdHeader),
+                                    studentName: activeStudentNameHeader,
+                                    currentBid: newBid,
+                                    currentHouse: activeWinnerHouseHeader
+                                };
+                            } else {
+                                if (newBid > activeBiddingCard.currentBid || activeWinnerHouseHeader !== activeBiddingCard.currentHouse) {
+                                    activeBiddingCard.currentBid = newBid;
+                                    activeBiddingCard.currentHouse = activeWinnerHouseHeader;
+                                    
+                                    playCoinSound();
+
+                                    document.getElementById("active-floater-house").textContent = `Current Leader: ${activeWinnerHouseHeader}`;
+                                    
+                                    const bidEl = document.getElementById("active-floater-bid");
+                                    bidEl.textContent = `${newBid.toLocaleString('en-IN')} rs`;
+                                    
+                                    bidEl.style.transform = 'scale(1.25)';
+                                    bidEl.style.color = '#10B981';
+                                    setTimeout(() => {
+                                        bidEl.style.transform = 'scale(1)';
+                                        bidEl.style.color = '#F59E0B';
+                                    }, 400);
+                                }
+
+                                document.getElementById("active-floater-timer").textContent = `Time Left: ${timeLeft.toFixed(1)}s`;
+                            }
+                        } else {
+                            if (activeBiddingCard) {
+                                activeBiddingCard.el.remove();
+                                activeBiddingCard = null;
+                            }
+                        }
+                    } else {
+                        return Promise.reject("Network error");
+                    }
+                    return res.text();
+                })
+                .then(html => {
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(html, "text/html");
+                    const newHouseBoxes = newDoc.querySelectorAll(".house-box");
+
+                    const newStudentMap = new Map();
+                    newHouseBoxes.forEach(houseBox => {
+                        const houseName = houseBox.querySelector(".house-title")?.textContent?.trim();
+                        houseBox.querySelectorAll(".student-name").forEach(studentDiv => {
+                            const studentName = studentDiv.textContent.trim();
+                            const key = `${houseName}::${studentName}`;
+                            newStudentMap.set(key, true);
+                        });
+                    });
+
+                    const container = document.querySelector(".houses-container");
+                    container.innerHTML = "";
+
+                    newHouseBoxes.forEach(houseBox => {
+                        container.appendChild(houseBox);
+                    });
+
+                    // Check if active bidding war ended (headers are now empty but we have a card)
+                    if (activeBiddingCard && activeStudentIdHeader === null) {
+                        const studentDiv = findStudentDiv(activeBiddingCard.currentHouse, activeBiddingCard.studentName);
+                        const cardEl = activeBiddingCard.el;
+                        const studentName = activeBiddingCard.studentName;
+                        const houseName = activeBiddingCard.currentHouse;
+                        
+                        if (studentDiv) {
+                            studentDiv.style.opacity = '0';
+                            
+                            const rect = studentDiv.getBoundingClientRect();
+                            const targetX = rect.left + window.scrollX;
+                            const targetY = rect.top + window.scrollY;
+                            const targetWidth = rect.width;
+                            const targetHeight = rect.height;
+
+                            cardEl.style.transition = "all 1.2s cubic-bezier(0.25, 0.8, 0.25, 1)";
+                            cardEl.style.position = 'absolute';
+                            cardEl.style.left = (window.scrollX + window.innerWidth / 2) + 'px';
+                            cardEl.style.top = (window.scrollY + window.innerHeight / 2) + 'px';
+                            cardEl.style.transform = 'translate(-50%, -50%) scale(1.4)';
+
+                            cardEl.offsetWidth;
+
+                            cardEl.style.left = targetX + 'px';
+                            cardEl.style.top = targetY + 'px';
+                            cardEl.style.width = targetWidth + 'px';
+                            cardEl.style.height = targetHeight + 'px';
+                            cardEl.style.transform = 'translate(0, 0) scale(1)';
+                            cardEl.style.opacity = '0.9';
+                            cardEl.style.borderRadius = '10px';
+                            cardEl.style.padding = '12px 18px';
+                            cardEl.style.fontSize = '1rem';
+                            cardEl.style.fontWeight = '500';
+                            cardEl.innerHTML = `👤 ${studentName}`;
+                            cardEl.style.background = 'rgba(16, 185, 129, 0.2)';
+                            cardEl.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                            cardEl.style.color = '#34d399';
+                            cardEl.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.2)';
+
+                            setTimeout(() => {
+                                cardEl.remove();
+                                studentDiv.style.opacity = '1';
+                                studentDiv.classList.add('highlight-student-splash');
+                                const houseBox = studentDiv.closest(".house-box");
+                                if (houseBox) {
+                                    houseBox.classList.add('highlight-box');
+                                    setTimeout(() => {
+                                        houseBox.classList.remove('highlight-box');
+                                    }, 3000);
+                                }
+                            }, 1200);
+                        } else {
+                            cardEl.remove();
+                        }
+                        activeBiddingCard = null;
+                    }
+
+                    // Handle normal assignment drafts (when biddingMode is off)
+                    const newDrafts = [];
+                    newStudentMap.forEach((_, key) => {
+                        if (previousStudentMap.size > 0 && !previousStudentMap.has(key)) {
+                            const [houseName, studentName] = key.split("::");
+                            newDrafts.push({ key, studentName, houseName });
+                        }
+                    });
+
+                    if (newDrafts.length > 0) {
+                        animateDraftsSequence(newDrafts);
+                    }
+
+                    previousStudentMap = newStudentMap;
+                })
+                .catch(err => console.error("Error refreshing houses:", err));
+        }
+
+        function animateDraftsSequence(drafts) {
+            if (drafts.length === 0) return;
+            const { key, studentName, houseName } = drafts.shift();
+
+            const floater = document.createElement('div');
+            floater.className = 'auction-draft-floater';
+            floater.innerHTML = `
+                <div class="draft-badge">NEW MEMBER ADDED</div>
+                <div class="draft-student">${studentName}</div>
+                <div class="draft-house">Joined ${houseName}</div>
+            `;
+
+            floater.style.left = '50vw';
+            floater.style.top = '50vh';
+            document.body.appendChild(floater);
+
+            floater.offsetWidth;
+            floater.classList.add('show');
+
+            setTimeout(() => {
+                const studentDiv = findStudentDiv(houseName, studentName);
+                if (studentDiv) {
+                    studentDiv.style.opacity = '0';
+                    const rect = studentDiv.getBoundingClientRect();
+                    const targetX = rect.left + window.scrollX;
+                    const targetY = rect.top + window.scrollY;
+                    const targetWidth = rect.width;
+                    const targetHeight = rect.height;
+
+                    floater.classList.remove('show');
+                    floater.style.position = 'absolute';
+                    floater.style.left = (window.scrollX + window.innerWidth / 2) + 'px';
+                    floater.style.top = (window.scrollY + window.innerHeight / 2) + 'px';
+                    floater.style.transform = 'translate(-50%, -50%) scale(1.4)';
+
+                    floater.offsetWidth;
+
+                    floater.style.left = targetX + 'px';
+                    floater.style.top = targetY + 'px';
+                    floater.style.width = targetWidth + 'px';
+                    floater.style.height = targetHeight + 'px';
+                    floater.style.transform = 'translate(0, 0) scale(1)';
+                    floater.style.opacity = '0.9';
+                    floater.style.borderRadius = '10px';
+                    floater.style.padding = '12px 18px';
+                    floater.style.fontSize = '1rem';
+                    floater.style.fontWeight = '500';
+                    floater.innerHTML = `👤 ${studentName}`;
+                    floater.style.background = 'rgba(16, 185, 129, 0.2)';
+                    floater.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                    floater.style.color = '#34d399';
+                    floater.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.2)';
+
+                    setTimeout(() => {
+                        floater.remove();
+                        studentDiv.style.opacity = '1';
+                        studentDiv.classList.add('highlight-student-splash');
+                        const houseBox = studentDiv.closest(".house-box");
+                        if (houseBox) {
+                            houseBox.classList.add('highlight-box');
+                            setTimeout(() => {
+                                houseBox.classList.remove('highlight-box');
+                            }, 3000);
+                        }
+                        animateDraftsSequence(drafts);
+                    }, 1200);
+                } else {
+                    floater.remove();
+                    animateDraftsSequence(drafts);
+                }
+            }, 1800);
+        }
+
+        // Initial build of map without animating everything
+        fetch("{% url 'grouped_students_partial' %}")
+            .then(res => res.ok ? res.text() : Promise.reject("Network error"))
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+                doc.querySelectorAll(".house-box").forEach(houseBox => {
+                    const houseName = houseBox.querySelector(".house-title")?.textContent?.trim();
+                    houseBox.querySelectorAll(".student-name").forEach(studentDiv => {
+                        const studentName = studentDiv.textContent.trim();
+                        const key = `${houseName}::${studentName}`;
+                        previousStudentMap.set(key, true);
+                    });
+                });
+            });
+
+        // Auto-refresh every 2 seconds
+        setInterval(refreshHouses, 2000);
+    </script>
+</body>
+
+</html>

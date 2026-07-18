@@ -1,0 +1,725 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<link rel="stylesheet" href="{% static 'style/styles.css' %}">
+<style>
+    .tab-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 12px;
+        margin-bottom: 20px;
+    }
+    .tab-btn {
+        width: auto !important;
+        padding: 8px 16px !important;
+        font-size: 0.9rem !important;
+        background: rgba(255, 255, 255, 0.02) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 8px !important;
+        color: var(--text-muted) !important;
+        cursor: pointer;
+        transition: var(--transition-fast) !important;
+        font-family: var(--font-body);
+        font-weight: 500;
+        margin: 0 !important;
+    }
+    .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.06) !important;
+        color: #fff !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    .tab-btn.active {
+        background: linear-gradient(135deg, var(--accent-primary) 0%, #6d28d9 100%) !important;
+        color: #fff !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25) !important;
+    }
+    .tab-content {
+        animation: fadeIn 0.2s ease-in-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<body>
+    <nav>
+        <h1>Housing</h1>
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="{% static 'images/white.png' %}" alt="">
+            </div>
+            <div class="nav-links">
+                {% if 'Admin' in groups %}
+                <a href="{% url 'dashboard' %}">Dashboard</a>
+                <a href="{% url 'group' %}">Groups</a>
+                <a href="{% url 'timetable' %}">Timetable</a>
+                <a href="{% url 'users' %}">Users</a>
+                <a href="{% url 'program' %}">Programs</a>
+                <a href="{% url 'participants' %}">Participants</a>
+                <a href="{% url 'assign_students' %}">Assign</a>
+                <a href="">Gallery</a>
+
+                {% elif 'teacher' in groups %}
+                <a href="{% url 'program' %}">📋Programs</a>
+                <a href="">🏆Results</a>
+                <a href="">👨‍🎓Students</a>
+
+                {% elif 'controller' in groups %}
+                <a href="{% url 'dashboard' %}">🏠Dashboard</a>
+                <a href="{% url 'participants' %}">🏃Participants</a>
+
+                {% elif 'leader' in groups %}
+                <a href="{% url 'auction' %}">🔨Auction</a>
+                <a href="{% url 'assign_students' %}">🔗Assign</a>
+                {% endif %}
+
+                <a href="">👋Hi, {{user.first_name}}</a>
+                <a href="#" onclick="openPasswordModal()" title="Change Password">🔑</a>
+                <a href="{% url 'logout' %}" title="Logout">⏻</a>
+            </div>
+            <div class="nav-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+
+    <main class="main_area">
+        {% if messages %}
+        <div style="width: 100%; max-width: 1200px; margin: 0 auto 20px auto; padding: 0 15px;">
+            {% for message in messages %}
+            <div
+                style="padding: 14px 20px; border-radius: 10px; margin-bottom: 15px; border: 1px solid {% if 'success' in message.tags %}rgba(16, 185, 129, 0.4){% else %}rgba(239, 68, 68, 0.4){% endif %}; background: {% if 'success' in message.tags %}rgba(16, 185, 129, 0.08){% else %}rgba(239, 68, 68, 0.08){% endif %}; color: {% if 'success' in message.tags %}var(--success){% else %}var(--danger){% endif %}; font-family: var(--font-body); font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 10px;">
+                <span>{% if 'success' in message.tags %}✓{% else %}⚠️{% endif %}</span>
+                <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}
+        <div class="dashboard-wrapper">
+
+            {% if 'Admin' in groups %}
+            <!-- Unified Main Header -->
+            <div
+                style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; margin-bottom: 10px;">
+                <h2
+                    style="font-family: var(--font-display); font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0;">
+                    Admin Settings Manager</h2>
+            </div>
+
+            <!-- Auction Control Panel Card -->
+            <div class="dashboard-contents-container">
+                <h3
+                    style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0 0 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                    Auction Control Panel</h3>
+
+                <form method="POST" class="control-form" style="margin-top: 15px;">
+                    {% csrf_token %}
+                    <label for="grade" style="color: rgb(255, 255, 255);" class="form-label">Select Grade:</label>
+                    <select name="grade" id="grade" class="form-select">
+                        <option value="">-- Select a grade --</option>
+                        <option value="All" {% if selected_grade == 'All' %}selected{% endif %}>All Classes</option>
+                        {% for grade in available_grades %}
+                        <option value="{{ grade }}" {% if grade == selected_grade %}selected{% endif %}>
+                            {{ grade }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn-submit">Open</button>
+                </form>
+
+                {% if selected_grade %}
+                <p class="selected-grade">Currently Selected Grade:
+                    <strong>{% if selected_grade == 'All' %}All Classes{% else %}{{ selected_grade }}{% endif %}</strong>
+                </p>
+
+                <!-- Auction Status Controller -->
+                <div
+                    style="border-top: 1px solid var(--glass-border); padding-top: 15px; margin-top: 15px; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px; font-weight: 500;">
+                        Auction Status: <strong>{% if auction_active %}<span style="color: #10B981;">ACTIVE</span>{% else %}<span style="color: #EF4444;">INACTIVE</span>{% endif %}</strong>
+                    </p>
+                    <form method="POST" action="{% url 'dashboard' %}"
+                        style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="toggle_auction" value="1">
+                        <button type="submit" name="auction_active" value="on" class="btn-submit"
+                            {% if auction_active %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if auction_active %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #10B981 0%, #059669 100%);{% endif %}">Start</button>
+                        <button type="submit" name="auction_active" value="off" class="btn-submit"
+                            {% if not auction_active %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if not auction_active %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);{% endif %}">Pause</button>
+                    </form>
+                </div>
+
+                <!-- Bidding Mode Controller -->
+                <div
+                    style="border-top: 1px solid var(--glass-border); padding-top: 15px; margin-top: 15px; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px; font-weight: 500;">
+                        Bidding Mode: <strong>{% if bidding_mode %}<span style="color: #10B981;">ON</span>{% else %}<span style="color: #EF4444;">OFF</span>{% endif %}</strong>
+                    </p>
+                    <form method="POST" action="{% url 'dashboard' %}"
+                        style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="toggle_bidding" value="1">
+                        <button type="submit" name="bidding_mode" value="on" class="btn-submit"
+                            {% if bidding_mode %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if bidding_mode %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #10B981 0%, #059669 100%);{% endif %}">Turn On</button>
+                        <button type="submit" name="bidding_mode" value="off" class="btn-submit"
+                            {% if not bidding_mode %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if not bidding_mode %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);{% endif %}">Turn Off</button>
+                    </form>
+
+                    <form method="POST" action="{% url 'dashboard' %}"
+                        style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; display: flex; flex-direction: column; gap: 12px; align-items: stretch;">
+                        {% csrf_token %}
+                        <input type="hidden" name="update_bidding_config" value="1">
+                        <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
+                            <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">Minimum Bidding Amount (rs)</label>
+                            <input type="number" name="min_bid" value="{{ min_bid_amount|default:1000 }}" required
+                                style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.95rem; outline: none; margin: 0; box-sizing: border-box;">
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
+                            <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">Bidding Confirmation Time (seconds)</label>
+                            <input type="number" name="bid_confirmation_duration" value="{{ bid_confirmation_duration|default:10 }}" required
+                                style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.95rem; outline: none; margin: 0; box-sizing: border-box;">
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
+                            <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">Average Biddable Persons per Team</label>
+                            <input type="number" name="avg_biddable_count" value="{{ avg_biddable_count|default:3 }}" required
+                                style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.95rem; outline: none; margin: 0; box-sizing: border-box;">
+                        </div>
+                        <button type="submit" class="btn-submit"
+                            style="margin: 0; padding: 10px 15px; font-size: 0.9rem; width: 100%;">Save Bidding Settings</button>
+                    </form>
+                </div>
+
+                <!-- Selection Round Controller (Visible when Bidding Mode is OFF) -->
+                {% if not bidding_mode %}
+                <div
+                    style="border-top: 1px solid var(--glass-border); padding-top: 15px; margin-top: 15px; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px; font-weight: 500;">
+                        Round-based Selection: <strong>{% if selection_round_active %}<span style="color: #10B981;">ON</span>{% else %}<span style="color: #EF4444;">OFF</span>{% endif %}</strong>
+                    </p>
+                    <form method="POST" action="{% url 'dashboard' %}"
+                        style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="toggle_round_mode" value="1">
+                        <button type="submit" name="selection_round_active" value="on" class="btn-submit"
+                            {% if selection_round_active %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if selection_round_active %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #10B981 0%, #059669 100%);{% endif %}">Turn On</button>
+                        <button type="submit" name="selection_round_active" value="off" class="btn-submit"
+                            {% if not selection_round_active %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if not selection_round_active %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);{% endif %}">Turn Off</button>
+                    </form>
+
+                    {% if selection_round_active %}
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">
+                        Current Round: <strong>{{ current_round }}</strong> | Current Turn: <strong>{{ current_turn_leader_name }}</strong>
+                    </p>
+                    <form method="POST" action="{% url 'dashboard' %}"
+                        style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="manage_rounds" value="1">
+                        <button type="submit" name="action" value="advance" class="btn-submit"
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.85rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">Skip Turn</button>
+                        <button type="submit" name="action" value="reset" class="btn-submit"
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.85rem; background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%);">Reset Draft</button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Leader Order Configuration -->
+                    <form method="POST" action="{% url 'dashboard' %}"
+                        style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; margin-top: 15px; display: flex; flex-direction: column; gap: 12px; align-items: stretch;">
+                        {% csrf_token %}
+                        <input type="hidden" name="set_leader_order" value="1">
+                        <div style="display: flex; flex-direction: column; gap: 8px; text-align: left;">
+                            <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">Set Leader Draft Order:</label>
+                            {% for leader in leaders_list %}
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--glass-border);">
+                                <span style="color: #fff; font-size: 0.9rem;">
+                                    {{ leader.first_name|default:leader.username }} 
+                                    {% if leader.student.house %}<small style="color: var(--text-muted);">({{ leader.student.house }})</small>{% endif %}
+                                </span>
+                                <input type="number" name="leader_pos_{{ leader.id }}" value="{{ leader.pos }}" min="1" required
+                                    style="width: 50px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.25); color: #fff; text-align: center; font-size: 0.85rem; outline: none; margin: 0;">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn-submit"
+                            style="margin: 0; padding: 8px 15px; font-size: 0.85rem; width: 100%;">Save Draft Order</button>
+                    </form>
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="no-grade" style="margin-top: 15px;">No grade selected yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- Candidate Registration Controls Card -->
+            <div class="dashboard-contents-container">
+                <h3
+                    style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0 0 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                    📂 Candidate Registration Controls</h3>
+                
+                <div style="text-align: center; margin-top: 15px;">
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px; font-weight: 500;">
+                        Candidate Registration status: <strong>{% if candidate_registration_active %}<span style="color: #10B981;">ON</span>{% else %}<span style="color: #EF4444;">OFF</span>{% endif %}</strong>
+                    </p>
+                    <form method="POST" action="{% url 'dashboard' %}"
+                        style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="toggle_candidate_registration" value="1">
+                        <button type="submit" name="candidate_registration_active" value="on" class="btn-submit"
+                            {% if candidate_registration_active %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if candidate_registration_active %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #10B981 0%, #059669 100%);{% endif %}">Turn On</button>
+                        <button type="submit" name="candidate_registration_active" value="off" class="btn-submit"
+                            {% if not candidate_registration_active %}disabled{% endif %}
+                            style="margin: 0; flex: 1; padding: 10px 15px; font-size: 0.9rem; {% if not candidate_registration_active %}opacity: 0.5; cursor: not-allowed; background: #374151;{% else %}background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);{% endif %}">Turn Off</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Master Lists Configuration Card -->
+            <div class="dashboard-contents-container" style="grid-column: 1 / -1; margin-top: 10px;">
+                <h3
+                    style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0 0 20px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                    ⚙️ Master Lists Configuration</h3>
+
+                <!-- Tab bar -->
+                <div class="tab-container">
+                    <button type="button" class="tab-btn active" onclick="switchTab(event, 'tab-sections')">Sections</button>
+                    <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-categories')">Categories</button>
+                    <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-types')">Program Types</button>
+                    <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-skills')">Skills</button>
+                    <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-judging')">Judging Conditions</button>
+                    <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-keys')">Custom Keys</button>
+                </div>
+
+                <!-- Sections Tab Content -->
+                <div id="tab-sections" class="tab-content" style="display: block;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: var(--accent-secondary-hover); font-size: 1.1rem; font-family: var(--font-display);">Sections list</h4>
+                        <button type="button" onclick="openAddModal('section')" style="width: auto; padding: 6px 12px; font-size: 0.85rem; height: auto;">+ Add Section</button>
+                    </div>
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="styled-table" style="margin: 0;">
+                            <tbody>
+                                {% for item in settings_sections %}
+                                <tr>
+                                    <td style="padding: 12px 16px;">{{ item.section }}</td>
+                                    <td style="padding: 12px 16px; text-align: right; width: 120px;">
+                                        <div style="display: inline-flex; gap: 8px;">
+                                            <a href="#"
+                                                onclick="openEditModal('{{ item.id }}', 'section', '{{ item.section|escapejs }}'); return false;"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                                            <a href="{% url 'delete_setting' item.id %}"
+                                                onclick="return confirm('Delete this section?');"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Delete">🗑️</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" style="color: var(--text-muted); text-align: center; padding: 15px;">No sections defined.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Categories Tab Content -->
+                <div id="tab-categories" class="tab-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: var(--accent-secondary-hover); font-size: 1.1rem; font-family: var(--font-display);">Categories list</h4>
+                        <button type="button" onclick="openAddModal('category')" style="width: auto; padding: 6px 12px; font-size: 0.85rem; height: auto;">+ Add Category</button>
+                    </div>
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="styled-table" style="margin: 0;">
+                            <tbody>
+                                {% for item in settings_categories %}
+                                <tr>
+                                    <td style="padding: 12px 16px;">{{ item.category }}</td>
+                                    <td style="padding: 12px 16px; text-align: right; width: 120px;">
+                                        <div style="display: inline-flex; gap: 8px;">
+                                            <a href="#"
+                                                onclick="openEditModal('{{ item.id }}', 'category', '{{ item.category|escapejs }}'); return false;"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                                            <a href="{% url 'delete_setting' item.id %}"
+                                                onclick="return confirm('Delete this category?');"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Delete">🗑️</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" style="color: var(--text-muted); text-align: center; padding: 15px;">No categories defined.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Program Types Tab Content -->
+                <div id="tab-types" class="tab-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: var(--accent-secondary-hover); font-size: 1.1rem; font-family: var(--font-display);">Program Types list</h4>
+                        <button type="button" onclick="openAddModal('type')" style="width: auto; padding: 6px 12px; font-size: 0.85rem; height: auto;">+ Add Type</button>
+                    </div>
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="styled-table" style="margin: 0;">
+                            <tbody>
+                                {% for item in settings_types %}
+                                <tr>
+                                    <td style="padding: 12px 16px;">{{ item.type }}</td>
+                                    <td style="padding: 12px 16px; text-align: right; width: 120px;">
+                                        <div style="display: inline-flex; gap: 8px;">
+                                            <a href="#"
+                                                onclick="openEditModal('{{ item.id }}', 'type', '{{ item.type|escapejs }}'); return false;"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                                            <a href="{% url 'delete_setting' item.id %}"
+                                                onclick="return confirm('Delete this program type?');"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Delete">🗑️</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" style="color: var(--text-muted); text-align: center; padding: 15px;">No program types defined.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Skills Tab Content -->
+                <div id="tab-skills" class="tab-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: var(--accent-secondary-hover); font-size: 1.1rem; font-family: var(--font-display);">Skills list</h4>
+                        <button type="button" onclick="openAddModal('skill')" style="width: auto; padding: 6px 12px; font-size: 0.85rem; height: auto;">+ Add Skill</button>
+                    </div>
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="styled-table" style="margin: 0;">
+                            <tbody>
+                                {% for item in settings_skills %}
+                                <tr>
+                                    <td style="padding: 12px 16px;">{{ item.skill }}</td>
+                                    <td style="padding: 12px 16px; text-align: right; width: 120px;">
+                                        <div style="display: inline-flex; gap: 8px;">
+                                            <a href="#"
+                                                onclick="openEditModal('{{ item.id }}', 'skill', '{{ item.skill|escapejs }}'); return false;"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                                            <a href="{% url 'delete_setting' item.id %}"
+                                                onclick="return confirm('Delete this skill?');"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Delete">🗑️</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" style="color: var(--text-muted); text-align: center; padding: 15px;">No skills defined.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Judging Conditions Tab Content -->
+                <div id="tab-judging" class="tab-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: var(--accent-secondary-hover); font-size: 1.1rem; font-family: var(--font-display);">Judging Conditions list</h4>
+                        <button type="button" onclick="openAddModal('judging_conditions')" style="width: auto; padding: 6px 12px; font-size: 0.85rem; height: auto;">+ Add Condition</button>
+                    </div>
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="styled-table" style="margin: 0;">
+                            <tbody>
+                                {% for item in settings_judging %}
+                                <tr>
+                                    <td style="padding: 12px 16px;">{{ item.judging_conditions }}</td>
+                                    <td style="padding: 12px 16px; text-align: right; width: 120px;">
+                                        <div style="display: inline-flex; gap: 8px;">
+                                            <a href="#"
+                                                onclick="openEditModal('{{ item.id }}', 'judging_conditions', '{{ item.judging_conditions|escapejs }}'); return false;"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                                            <a href="{% url 'delete_setting' item.id %}"
+                                                onclick="return confirm('Delete this condition?');"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Delete">🗑️</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" style="color: var(--text-muted); text-align: center; padding: 15px;">No judging conditions defined.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Custom Keys Tab Content -->
+                <div id="tab-keys" class="tab-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: var(--accent-secondary-hover); font-size: 1.1rem; font-family: var(--font-display);">Custom Key-Values list</h4>
+                        <button type="button" onclick="openAddModal('key_value')" style="width: auto; padding: 6px 12px; font-size: 0.85rem; height: auto;">+ Add Key-Value</button>
+                    </div>
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="styled-table" style="margin: 0;">
+                            <tbody>
+                                {% for item in settings_keys %}
+                                <tr>
+                                    <td style="padding: 12px 16px;">
+                                        <strong>{{ item.key }}:</strong> {{ item.value }}
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: right; width: 120px;">
+                                        <div style="display: inline-flex; gap: 8px;">
+                                            <a href="#"
+                                                onclick="openEditModal('{{ item.id }}', 'key_value', '{{ item.key|escapejs }}', '{{ item.value|escapejs }}'); return false;"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                                            <a href="{% url 'delete_setting' item.id %}"
+                                                onclick="return confirm('Delete this setting?');"
+                                                style="text-decoration: none; font-size: 1.1rem;" title="Delete">🗑️</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" style="color: var(--text-muted); text-align: center; padding: 15px;">No key-values defined.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+            {% endif %}
+
+        </div>
+        {% endblock %}
+
+    </main>
+
+
+    <!-- Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closePasswordModal()">&times;</span>
+            <form id="passwordForm">
+                <label>Current Password:</label>
+                <input type="password" name="current_password" required><br>
+
+                <label>New Password:</label>
+                <input type="password" name="new_password" required><br>
+
+                <label>Confirm Password:</label>
+                <input type="password" name="confirm_password" required><br>
+
+                <button type="submit">Update</button>
+            </form>
+            <div id="passwordMessage" style="margin-top:10px;"></div>
+        </div>
+    </div>
+
+    <!-- Admin Setting Modal -->
+    <div id="settingModal" class="modal">
+        <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
+            <span class="close" onclick="closeSettingModal()">&times;</span>
+            <h2 id="modal-title">Create New Setting</h2>
+            <form id="settingForm" method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" name="setting_type_field" id="setting_type_field">
+
+                <div id="field_group_key_value" style="display: none;">
+                    <label>Key:</label>
+                    <input type="text" name="key" id="setting_key"><br>
+                    <label>Value:</label>
+                    <input type="text" name="value" id="setting_value"><br>
+                </div>
+
+                <div id="field_group_section" style="display: none;">
+                    <label>Section Name:</label>
+                    <input type="text" name="section" id="setting_section"><br>
+                </div>
+
+                <div id="field_group_category" style="display: none;">
+                    <label>Category Name:</label>
+                    <input type="text" name="category" id="setting_category"><br>
+                </div>
+
+                <div id="field_group_type" style="display: none;">
+                    <label>Program Type:</label>
+                    <input type="text" name="type" id="setting_type"><br>
+                </div>
+
+                <div id="field_group_skill" style="display: none;">
+                    <label>Skill Name:</label>
+                    <input type="text" name="skill" id="setting_skill"><br>
+                </div>
+
+                <div id="field_group_judging_conditions" style="display: none;">
+                    <label>Judging Conditions:</label>
+                    <input type="text" name="judging_conditions" id="setting_judging_conditions"><br>
+                </div>
+
+                <button type="submit" id="saveBtn">Save</button><br>
+                <button type="button" class="secondary" onclick="closeSettingModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="blur-overlay"></div>
+
+
+</body>
+<script>
+    // Show modal
+    function openPasswordModal() {
+        document.getElementById('passwordModal').style.display = 'block';
+        document.getElementById('blur-overlay').style.display = 'block';
+    }
+
+    function closePasswordModal() {
+        document.getElementById('passwordModal').style.display = 'none';
+        document.getElementById('blur-overlay').style.display = 'none';
+        document.getElementById('passwordMessage').innerHTML = '';
+    }
+
+    function openAddModal(typeField) {
+        document.getElementById('modal-title').textContent = 'Add ' + formatTypeLabel(typeField);
+        document.getElementById('settingForm').action = "{% url 'add_setting' %}";
+        document.getElementById('setting_type_field').value = typeField;
+
+        hideAllFieldGroups();
+
+        if (typeField === 'key_value') {
+            document.getElementById('field_group_key_value').style.display = 'block';
+            document.getElementById('setting_key').value = '';
+            document.getElementById('setting_value').value = '';
+        } else {
+            document.getElementById('field_group_' + typeField).style.display = 'block';
+            document.getElementById('setting_' + typeField).value = '';
+        }
+
+        document.getElementById('settingModal').style.display = 'block';
+        document.getElementById('blur-overlay').style.display = 'block';
+    }
+
+    function openEditModal(id, typeField, val1, val2) {
+        document.getElementById('modal-title').textContent = 'Edit ' + formatTypeLabel(typeField);
+        document.getElementById('settingForm').action = `/admin-settings/edit/${id}/`;
+        document.getElementById('setting_type_field').value = typeField;
+
+        hideAllFieldGroups();
+
+        if (typeField === 'key_value') {
+            document.getElementById('field_group_key_value').style.display = 'block';
+            document.getElementById('setting_key').value = val1;
+            document.getElementById('setting_value').value = val2;
+        } else {
+            document.getElementById('field_group_' + typeField).style.display = 'block';
+            document.getElementById('setting_' + typeField).value = val1;
+        }
+
+        document.getElementById('settingModal').style.display = 'block';
+        document.getElementById('blur-overlay').style.display = 'block';
+    }
+
+    function hideAllFieldGroups() {
+        const groups = ['key_value', 'section', 'category', 'type', 'skill', 'judging_conditions'];
+        groups.forEach(g => {
+            document.getElementById('field_group_' + g).style.display = 'none';
+        });
+    }
+
+    function formatTypeLabel(typeField) {
+        switch (typeField) {
+            case 'key_value': return 'Key-Value Setting';
+            case 'section': return 'Section';
+            case 'category': return 'Category';
+            case 'type': return 'Program Type';
+            case 'skill': return 'Skill';
+            case 'judging_conditions': return 'Judging Condition';
+            default: return 'Setting';
+        }
+    }
+
+    function closeSettingModal() {
+        document.getElementById('settingModal').style.display = 'none';
+        document.getElementById('blur-overlay').style.display = 'none';
+    }
+
+    function switchTab(evt, tabId) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.style.display = 'none';
+        });
+        // Remove active class from all tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        // Show selected tab content
+        document.getElementById(tabId).style.display = 'block';
+        // Add active class to clicked button
+        evt.currentTarget.classList.add('active');
+    }
+
+
+    document.getElementById('passwordForm').onsubmit = async function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        const response = await fetch("{% url 'edit_password' %}", {
+            method: "POST",
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        });
+
+        const result = await response.json();
+        const msgBox = document.getElementById('passwordMessage');
+        msgBox.innerHTML = result.message;
+
+        if (result.status === 'success') {
+            setTimeout(closePasswordModal, 1500);
+        }
+    }
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const navToggle = document.querySelector('.nav-toggle');
+        const navLinks = document.querySelector('.nav-links');
+
+        navToggle.addEventListener('click', function () {
+            navToggle.classList.toggle('active');
+            navLinks.classList.toggle('active');
+        });
+
+        // Close menu when clicking on a link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                navToggle.classList.remove('active');
+                navLinks.classList.remove('active');
+            });
+        });
+    });
+</script>
+
+</html>

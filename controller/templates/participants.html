@@ -1,0 +1,411 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+{% block content %}
+
+<div class="control_panel">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
+    <h1 style="margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 2.2rem; background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Participants</h1>
+    
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      
+      <!-- Excel Operations Group -->
+      <div style="display: flex; gap: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); padding: 5px; border-radius: 10px; align-items: center; height: 42px; box-sizing: border-box;">
+        <a href="{% url 'export_students_excel' %}" class="btn-action" style="padding: 8px 16px; font-size: 0.85rem; border-radius: 6px; margin: 0; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; height: 32px; box-sizing: border-box; line-height: 1;">
+            📥 Export Excel
+        </a>
+        {% if user.is_superuser or user.is_staff %}
+        <a href="{% url 'export_students_template' %}" style="text-decoration: none; background: transparent; color: var(--text-muted); padding: 8px 14px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; height: 32px; box-sizing: border-box; line-height: 1;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-muted)'">
+            Get Template
+        </a>
+        
+        <!-- Styled Autosubmitting Import Form -->
+        <form id="importExcelForm" style="display: inline-flex; align-items: center; margin: 0; width: auto;">
+            {% csrf_token %}
+            <label style="position: relative; cursor: pointer; background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255,255,255,0.2); color: var(--text-muted); padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; height: 32px; box-sizing: border-box; line-height: 1;" onmouseover="this.style.borderColor='var(--accent-primary)'; this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'; this.style.color='var(--text-muted)'">
+                <span id="file-name-display">Upload Excel</span>
+                <input type="file" name="excel_file" accept=".xlsx" required onchange="updateFileNameAndSubmit(this)" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+            </label>
+        </form>
+        {% endif %}
+      </div>
+
+      {% if user.is_superuser or user.is_staff %}
+      <!-- Create Student Button -->
+      <button type="button" onclick="openAddStudentModal()" style="background: linear-gradient(135deg, var(--accent-primary) 0%, #4f46e5 100%); border: none; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); height: 42px; box-sizing: border-box;">
+          ➕ Add Student
+      </button>
+
+      <!-- Danger Zone Action -->
+      <button class="danger" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444; padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; height: 42px; box-sizing: border-box;" onclick="clearAllAssignments()" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
+          Clear Assignments
+      </button>
+      {% endif %}
+      
+    </div>
+  </div> 
+
+  <input type="text" id="searchInput" onkeyup="filterStudents()" placeholder="Search students by name, adno, house, grade..." style="width: 100%; margin-bottom: 20px;" />
+
+  <div style="max-height: calc(100vh - 350px); overflow: auto; width: 100%; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(19, 10, 36, 0.4); backdrop-filter: blur(10px);">
+    <table class="styled-table" style="margin: 0; width: 100%; min-width: 1000px;">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Adno</th>
+              <th>Name</th>
+              <th>Father</th>
+              <th>Locality</th>
+              <th>State</th>
+              <th>Village</th>
+              <th>Grade</th> 
+              <th>House</th>
+              <th>Point</th>
+              <th>Bidded Amount</th>
+              {% if user.is_superuser or user.is_staff %}
+              <th style="text-align: center;">Actions</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in student %}
+                <tr>
+                    <td>{{forloop.counter}}</td>
+                    <td>{{student.adno|default:"-"}}</td>
+                    <td>{{student.name|default:"-"}}</td>
+                    <td>{{student.father|default:"-"}}</td>
+                    <td>{{student.locality|default:"-"}}</td>
+                    <td>{{student.state|default:"-"}}</td>
+                    <td>{{student.village|default:"-"}}</td>
+                    <td>{{student.grade|default:"-"}}</td>
+                    <td>{{student.house|default:"-"}}</td>
+                    <td>{{student.point|default:"0"}}</td>
+                    <td>{{student.amount|default:"-"}}</td>
+                    {% if user.is_superuser or user.is_staff %}
+                    <td style="text-align: center;">
+                        <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                            <a href="#" class="edit-student-btn"
+                               data-id="{{ student.id }}"
+                               data-user="{{ student.user_id|default:'' }}"
+                               data-adno="{{ student.adno|default:'' }}"
+                               data-name="{{ student.name|default:'' }}"
+                               data-father="{{ student.father|default:'' }}"
+                               data-section="{{ student.section|default:'' }}"
+                               data-locality="{{ student.locality|default:'' }}"
+                               data-state="{{ student.state|default:'' }}"
+                               data-village="{{ student.village|default:'' }}"
+                               data-grade="{{ student.grade|default:'' }}"
+                               data-scode="{{ student.scode|default:'' }}"
+                               data-house="{{ student.house|default:'' }}"
+                               data-category="{{ student.category|default:'' }}"
+                               data-point="{{ student.point|default:'0' }}"
+                               data-amount="{{ student.amount|default:'' }}"
+                               style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                            <a href="{% url 'delete_participant' student.id %}" 
+                               style="text-decoration: none; font-size: 1.1rem;" 
+                               onclick="return confirm('Are you sure you want to delete {{student.name}}?');" title="Delete">🗑️</a>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+          </tbody>
+      </table>
+  </div>
+
+</div>
+
+<!-- ✅ ADD STUDENT MODAL -->
+<div id="addStudentModal" class="modal modal-lg" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddStudentModal()" style="cursor: pointer;">&times;</span>
+        <h2>Create New Student</h2>
+        <form id="createStudentForm">
+            {% csrf_token %}
+            <div class="form-grid">
+                {% for field in form %}
+                    <div class="form-group">
+                        <label>{{ field.label }}:</label>
+                        {{ field }}
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="submit" style="margin-top: 15px;">Save Student</button>
+        </form>
+        <p id="responseMessage" style="color: #9ef; margin-top: 10px;"></p>
+    </div>
+</div>
+
+<!-- ✅ EDIT STUDENT MODAL -->
+<div id="editStudentModal" class="modal modal-lg" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditStudentModal()" style="cursor: pointer;">&times;</span>
+        <h2>Edit Student</h2>
+        <form id="editStudentForm" action="" method="post">
+            {% csrf_token %}
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>User:</label>
+                    <select name="user" id="edit_student_user">
+                        {% for val, label in form.user.field.choices %}
+                            <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Admission No (Adno):</label>
+                    <input type="text" name="adno" id="edit_student_adno" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" name="name" id="edit_student_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Father's Name:</label>
+                    <input type="text" name="father" id="edit_student_father">
+                </div>
+                
+                <div class="form-group">
+                    <label>Section:</label>
+                    <select name="section" id="edit_student_section">
+                        {% for val, label in form.section.field.choices %}
+                            <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Locality:</label>
+                    <input type="text" name="locality" id="edit_student_locality">
+                </div>
+                
+                <div class="form-group">
+                    <label>State:</label>
+                    <input type="text" name="state" id="edit_student_state">
+                </div>
+                
+                <div class="form-group">
+                    <label>Village:</label>
+                    <input type="text" name="village" id="edit_student_village">
+                </div>
+                
+                <div class="form-group">
+                    <label>Grade:</label>
+                    <input type="text" name="grade" id="edit_student_grade">
+                </div>
+                
+                <div class="form-group">
+                    <label>SCode:</label>
+                    <input type="text" name="scode" id="edit_student_scode">
+                </div>
+                
+                <div class="form-group">
+                    <label>House:</label>
+                    <input type="text" name="house" id="edit_student_house">
+                </div>
+                
+                <div class="form-group">
+                    <label>Category:</label>
+                    <select name="category" id="edit_student_category">
+                        {% for val, label in form.category.field.choices %}
+                            <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Point:</label>
+                    <input type="number" name="point" id="edit_student_point">
+                </div>
+                
+                <div class="form-group">
+                    <label>Bidded Amount (rs):</label>
+                    <input type="number" name="amount" id="edit_student_amount">
+                </div>
+            </div>
+            
+            <button type="submit" style="margin-top: 15px;">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function clearAllAssignments() {
+    if (!confirm("Are you sure you want to clear house assignments for all students?")) return;
+
+    fetch("{% url 'clear_house_assignments' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert("Error clearing data.");
+        }
+    });
+}
+
+function filterStudents() {
+    const input = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll(".styled-table tbody tr");
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(input) ? "" : "none";
+    });
+}
+
+function getCSRFToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) return csrfInput.value;
+    return '';
+}
+
+// Modals management
+function openAddStudentModal() {
+    document.getElementById('addStudentModal').style.display = 'block';
+    document.getElementById('blur-overlay').style.display = 'block';
+}
+
+function closeAddStudentModal() {
+    document.getElementById('addStudentModal').style.display = 'none';
+    document.getElementById('blur-overlay').style.display = 'none';
+    document.getElementById('responseMessage').textContent = '';
+}
+
+function closeEditStudentModal() {
+    document.getElementById('editStudentModal').style.display = 'none';
+    document.getElementById('blur-overlay').style.display = 'none';
+}
+
+// Submit Create Student via AJAX
+const createStudentForm = document.getElementById('createStudentForm');
+if (createStudentForm) {
+    createStudentForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch("{% url 'add_student' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            const respMsg = document.getElementById('responseMessage');
+            respMsg.textContent = data.message;
+            if (data.success) {
+                this.reset();
+                setTimeout(() => {
+                    closeAddStudentModal();
+                    location.reload();
+                }, 1000);
+            }
+        });
+    });
+}
+
+// Autosubmit and update filename
+function updateFileNameAndSubmit(input) {
+    if (input.files && input.files[0]) {
+        const display = document.getElementById("file-name-display");
+        display.textContent = "Uploading: " + input.files[0].name;
+        display.style.color = "#10B981";
+        
+        const form = document.getElementById("importExcelForm");
+        const formData = new FormData(form);
+        
+        const label = input.closest('label');
+        label.style.pointerEvents = 'none';
+        label.style.opacity = '0.7';
+
+        fetch("{% url 'import_students' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                location.reload();
+            } else {
+                display.textContent = "Upload Excel";
+                display.style.color = "var(--text-muted)";
+                label.style.pointerEvents = 'auto';
+                label.style.opacity = '1';
+                form.reset();
+            }
+        })
+        .catch(err => {
+            alert("Error importing file.");
+            display.textContent = "Upload Excel";
+            display.style.color = "var(--text-muted)";
+            label.style.pointerEvents = 'auto';
+            label.style.opacity = '1';
+            form.reset();
+        });
+    }
+}
+
+// Bind Edit Buttons click
+document.querySelectorAll('.edit-student-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        const stud = {
+            id: this.dataset.id,
+            user: this.dataset.user,
+            adno: this.dataset.adno,
+            name: this.dataset.name,
+            father: this.dataset.father,
+            section: this.dataset.section,
+            locality: this.dataset.locality,
+            state: this.dataset.state,
+            village: this.dataset.village,
+            grade: this.dataset.grade,
+            scode: this.dataset.scode,
+            house: this.dataset.house,
+            category: this.dataset.category,
+            point: this.dataset.point,
+            amount: this.dataset.amount
+        };
+
+        openEditStudentModal(stud);
+    });
+});
+
+function openEditStudentModal(stud) {
+    document.getElementById('editStudentForm').action = `/student/edit/${stud.id}/`;
+    
+    document.getElementById('edit_student_user').value = stud.user;
+    document.getElementById('edit_student_adno').value = stud.adno;
+    document.getElementById('edit_student_name').value = stud.name;
+    document.getElementById('edit_student_father').value = stud.father;
+    document.getElementById('edit_student_section').value = stud.section;
+    document.getElementById('edit_student_locality').value = stud.locality;
+    document.getElementById('edit_student_state').value = stud.state;
+    document.getElementById('edit_student_village').value = stud.village;
+    document.getElementById('edit_student_grade').value = stud.grade;
+    document.getElementById('edit_student_scode').value = stud.scode;
+    document.getElementById('edit_student_house').value = stud.house;
+    document.getElementById('edit_student_category').value = stud.category;
+    document.getElementById('edit_student_point').value = stud.point;
+    document.getElementById('edit_student_amount').value = stud.amount || '';
+
+    document.getElementById('editStudentModal').style.display = 'block';
+    document.getElementById('blur-overlay').style.display = 'block';
+}
+</script>
+
+{% endblock %}

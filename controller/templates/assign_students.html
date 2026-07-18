@@ -1,0 +1,251 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+{% load custom_tags %}
+{% block content %}
+
+<style>
+    /* Custom Checkboxes inside table cells */
+    .custom-checkbox {
+      display: inline-block;
+      position: relative;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .custom-checkbox input {
+      position: absolute;
+      opacity: 0;
+      cursor: pointer;
+      height: 0;
+      width: 0;
+    }
+
+    .checkmark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 20px;
+      width: 20px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 4px;
+      transition: var(--transition-fast);
+    }
+
+    .custom-checkbox:hover input ~ .checkmark {
+      background-color: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent-primary-hover);
+    }
+
+    .custom-checkbox input:checked ~ .checkmark {
+      background: linear-gradient(135deg, var(--accent-secondary) 0%, #0891b2 100%);
+      border-color: transparent;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+    }
+
+    .checkmark:after {
+      content: "";
+      position: absolute;
+      display: none;
+    }
+
+    .custom-checkbox input:checked ~ .checkmark:after {
+      display: block;
+    }
+
+    .custom-checkbox .checkmark:after {
+      left: 6px;
+      top: 2px;
+      width: 5px;
+      height: 10px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    /* Grid Table styles */
+    .grid-table-container {
+      overflow-x: auto;
+      max-width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      background: rgba(25, 15, 48, 0.35);
+      margin-top: 15px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .grid-table th, 
+    .grid-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--glass-border);
+      border-right: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .grid-table th {
+      background-color: #130a24;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Sticky first column (Student Name) */
+    .grid-table th:first-child,
+    .grid-table td:first-child {
+      position: sticky;
+      left: 0;
+      background-color: #130a24;
+      z-index: 10;
+      text-align: left;
+      border-right: 2px solid var(--glass-border);
+      font-weight: 500;
+      color: #fff;
+      min-width: 200px;
+      box-shadow: 4px 0 8px rgba(0,0,0,0.2);
+    }
+
+    .grid-table td:first-child {
+      background-color: #1a0f30;
+    }
+
+    .grid-table tr:hover td:first-child {
+      background-color: #241642;
+    }
+
+    .grid-table tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .grid-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+</style>
+
+<div class="control_panel" style="width: 95%; max-width: 1300px; margin: 0 auto 30px auto; background: var(--bg-surface);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
+        <div>
+            <h1>Candidate Registration</h1>
+            <p style="color: var(--text-muted); margin: 5px 0 0 0;">Register students into their category programs</p>
+        </div>
+        
+        <!-- Admin House Switcher -->
+        {% if is_admin %}
+        <form method="GET" action="" style="width: auto; display: flex; align-items: center; gap: 10px; margin: 0;">
+            <label style="margin: 0; white-space: nowrap; color: var(--text-light);">Select House:</label>
+            <select name="house" onchange="this.form.submit()" style="width: 200px; padding: 8px 12px; font-size: 0.9rem; margin: 0;">
+                {% for house in all_houses %}
+                    <option value="{{ house }}" {% if house == selected_house %}selected{% endif %}>{{ house|capfirst }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+        <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                {% for message in messages %}
+                    <li style="color: var(--success); font-weight: 500;">✅ {{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if not candidate_registration_active and not is_admin %}
+        <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+            <p style="color: var(--warning); font-weight: 500; margin: 0;">⚠️ Candidate registration is currently closed. You can view your assignments, but changes are disabled.</p>
+        </div>
+    {% endif %}
+
+    <form method="post" action="">
+        {% csrf_token %}
+
+        <!-- Sticky Form Action Header at top of page -->
+        <div style="position: sticky; top: 100px; z-index: 100; margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(19, 10, 36, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); padding: 15px 25px; border-radius: 12px; box-shadow: var(--shadow-lg);">
+                <div>
+                    <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Configuring House</span>
+                    <h2 style="font-family: var(--font-display); font-size: 1.3rem; color: var(--accent-secondary-hover); margin: 2px 0 0 0; text-transform: capitalize;">
+                        🏡 {{ selected_house }}
+                    </h2>
+                </div>
+                {% if candidate_registration_active or is_admin %}
+                <div style="width: auto;">
+                    <button type="submit" style="width: auto; padding: 10px 30px; font-size: 0.95rem; margin: 0;">Save Assignments</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if grids %}
+            {% for grid in grids %}
+                <div style="margin-bottom: 40px; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--glass-border); padding: 25px; border-radius: 16px;">
+                    <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: #fff; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                        <span>📂</span> Category: {{ grid.category }}
+                    </h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
+                        {{ grid.students|length }} students • {{ grid.programs|length }} programs
+                    </p>
+
+                    <div class="grid-table-container">
+                        <table class="grid-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    {% for program in grid.programs %}
+                                        <th title="{{ program.name }} (Code: {{ program.code }})">
+                                            {{ program.name|truncatechars:20 }}
+                                        </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in grid.students %}
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 600; color: #fff;">{{ student.name }}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                                                Adno: {{ student.adno }} | Gr: {{ student.grade }}
+                                            </div>
+                                        </td>
+                                        {% for program in grid.programs %}
+                                            <td>
+                                                <label class="custom-checkbox" {% if not candidate_registration_active and not is_admin %}style="cursor: not-allowed;"{% endif %}>
+                                                    <input type="checkbox" name="assign_{{ student.id }}_{{ program.id }}"
+                                                        {% if program.id in assignments|get_item:student.id %}checked{% endif %}
+                                                        {% if not candidate_registration_active and not is_admin %}disabled{% endif %}>
+                                                    <span class="checkmark" {% if not candidate_registration_active and not is_admin %}style="opacity: 0.5;"{% endif %}></span>
+                                                </label>
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align: center; padding: 50px 30px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px;">
+                <span style="font-size: 3rem;">📭</span>
+                <h3 style="color: #fff; margin-top: 15px; font-family: var(--font-display);">No Student-Program Grids</h3>
+                <p style="color: var(--text-muted); max-width: 450px; margin: 10px auto 0 auto; font-size: 0.95rem;">
+                    We couldn't find any students and programs belonging to the same category for the house <strong>{{ selected_house }}</strong>. Please ensure students have a category assigned.
+                </p>
+            </div>
+        {% endif %}
+
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% for s in student %}
+<div class="studentbox" id="student-{{ s.id }}">
+    <button onclick="confirmAssign('{{ s.id }}', this, '{{ s.name }}')">
+        {{ s.name }} <br>
+        {{s.adno}}
+    </button>
+</div>
+{% empty %}
+<div
+    style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px; background: rgba(255, 255, 255, 0.02); border-radius: 12px; border: 1px dashed var(--glass-border); font-size: 1.1rem; font-weight: 500;">
+    {% if not auction_active %}
+        ⏸️ Auction is currently paused/inactive by Admin.
+    {% else %}
+        🎉 All students are assigned to houses.
+    {% endif %}
+</div>
+{% endfor %}
