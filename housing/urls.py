@@ -55,13 +55,19 @@ urlpatterns = [
     path('admin-settings/add/', views.add_setting, name='add_setting'),
     path('admin-settings/edit/<int:setting_id>/', views.edit_setting, name='edit_setting'),
     path('admin-settings/delete/<int:setting_id>/', views.delete_setting, name='delete_setting'),
+    path('rule/add/', views.add_rule, name='add_rule'),
+    path('rule/edit/<int:rule_id>/', views.edit_rule, name='edit_rule'),
+    path('rule/delete/<int:rule_id>/', views.delete_rule, name='delete_rule'),
 
     # Program management
     path('program/add/', views.add_program, name='add_program'),
     path('program/edit/<int:program_id>/', views.edit_program, name='edit_program'),
     path('program/delete/<int:program_id>/', views.delete_program, name='delete_program'),
+    path('program/import/', views.import_programs, name='import_programs'),
+    path('program/export-template/', views.export_programs_template, name='export_programs_template'),
 
     #grouping setup
     path('group/', views.group, name='group'),
     path("assign-students/", views.assign_students, name="assign_students"),
+    path('utilities/', views.utilities, name='utilities'),
 ]

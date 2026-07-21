@@ -149,43 +149,93 @@ nav h1 {
   font-family: var(--font-display);
   font-size: 0.95rem;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.01);
   position: relative;
-  transition: var(--transition-fast);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .nav-links a:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
 }
 
-.nav-links a.active,
-.nav-links a:active {
-  color: var(--accent-secondary-hover);
+.nav-links a.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(6, 182, 212, 0.25) 100%) !important;
+  border-color: var(--accent-secondary-hover) !important;
+  box-shadow: 
+    0 0 15px rgba(6, 182, 212, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+  font-weight: 600;
 }
 
-/* Highlight style for action item links like Logout or user info */
-.nav-links a[title="Logout"] {
-  color: var(--danger);
+/* Nav User Actions Container */
+.nav-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nav-user-actions .user-greeting {
+  color: var(--text-light);
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: var(--font-body);
+}
+
+.nav-user-actions a {
+  color: var(--text-light);
+  text-decoration: none;
+  font-size: 1.1rem;
   padding: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 38px;
+  height: 38px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.nav-user-actions a:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.nav-user-actions a[title="Logout"] {
+  color: var(--danger);
   background: rgba(239, 68, 68, 0.08);
 }
 
-.nav-links a[title="Logout"]:hover {
+.nav-user-actions a[title="Logout"]:hover {
   background: var(--danger);
   color: #fff;
-  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
+/* Universal Nav Toggle style */
 .nav-toggle {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 5px;
   cursor: pointer;
+  z-index: 1001;
 }
 
 .nav-toggle span {
@@ -196,43 +246,95 @@ nav h1 {
   transition: var(--transition-normal);
 }
 
-/* Responsive navigation */
-@media (max-width: 900px) {
-  .nav-links {
-    position: fixed;
-    top: 80px;
-    left: 0;
-    width: 100%;
-    background-color: var(--bg-surface-solid);
-    border-bottom: 1px solid var(--glass-border);
-    flex-direction: column;
-    align-items: stretch;
-    padding: 24px;
-    gap: 12px;
-    transform: translateY(-160%);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-lg);
-  }
+.nav-toggle.active span:nth-child(1) {
+  transform: rotate(-45deg) translate(-5px, 5px);
+}
 
-  .nav-links.active {
-    transform: translateY(0);
-  }
+.nav-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
 
-  .nav-toggle {
-    display: flex;
-  }
+.nav-toggle.active span:nth-child(3) {
+  transform: rotate(45deg) translate(-5px, -5px);
+}
 
-  .nav-toggle.active span:nth-child(1) {
-    transform: rotate(-45deg) translate(-5px, 5px);
-  }
+/* Sidebar Styles */
+.sidebar {
+  position: fixed;
+  top: 75px;
+  left: 0;
+  width: 280px;
+  height: calc(100vh - 75px);
+  background: rgba(19, 10, 36, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--glass-border);
+  z-index: 999;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-lg);
+}
 
-  .nav-toggle.active span:nth-child(2) {
-    opacity: 0;
-  }
+.sidebar.active {
+  transform: translateX(0);
+}
 
-  .nav-toggle.active span:nth-child(3) {
-    transform: rotate(45deg) translate(-5px, -5px);
-  }
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 25px 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.sidebar-links a {
+  color: var(--text-light);
+  text-decoration: none;
+  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.01);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-links a:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+  transform: translateX(3px);
+}
+
+.sidebar-links a.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(6, 182, 212, 0.25) 100%) !important;
+  border-color: var(--accent-secondary-hover) !important;
+  box-shadow: 
+    0 0 15px rgba(6, 182, 212, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+  font-weight: 600;
+}
+
+/* Sidebar Overlay */
+#sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 75px;
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 75px);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+  animation: fadeIn 0.25s ease-out;
 }
 
 /* Main Area layouts */
@@ -337,6 +439,35 @@ select:focus {
     inset 0 2px 4px rgba(0, 0, 0, 0.1),
     0 0 0 4px var(--accent-primary-glow);
 }
+
+/* Custom File Label — position:relative keeps the hidden input contained */
+.custom-file-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  overflow: hidden;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  height: 32px;
+  box-sizing: border-box;
+  line-height: 1;
+}
+
+.custom-file-label:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--accent-primary-hover);
+  color: var(--text-main);
+}
+
 
 /* Checkbox alignment */
 input[type="checkbox"] {
@@ -1223,4 +1354,111 @@ button.danger:hover,
   flex: 1 1 180px;
   min-width: 150px;
   max-width: 100%;
+}
+
+/* ===========================
+   B&W PRINT MODE OVERRIDES
+   =========================== */
+
+/* Applied when user clicks "B&W Mode" toggle */
+body.bw-mode {
+  background: #fff !important;
+  color: #000 !important;
+  background-image: none !important;
+}
+
+body.bw-mode nav,
+body.bw-mode .sidebar,
+body.bw-mode #sidebar-overlay {
+  display: none !important;
+}
+
+body.bw-mode .main_area {
+  padding: 0 !important;
+}
+
+body.bw-mode .util-card {
+  background: #fff !important;
+  border: 1.5px solid #000 !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  break-inside: avoid;
+}
+
+body.bw-mode .util-card-header {
+  background: #000 !important;
+  color: #fff !important;
+  border-radius: 4px 4px 0 0 !important;
+}
+
+body.bw-mode .util-participant-badge {
+  background: #eee !important;
+  color: #000 !important;
+  border: 1px solid #555 !important;
+}
+
+body.bw-mode .util-controls,
+body.bw-mode .util-toolbar,
+body.bw-mode .util-tab-bar {
+  display: none !important;
+}
+
+body.bw-mode .util-print-header {
+  display: block !important;
+}
+
+/* @media print fires when browser print dialog is triggered */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    background-image: none !important;
+    font-size: 11pt !important;
+  }
+
+  nav,
+  .sidebar,
+  #sidebar-overlay,
+  .util-controls,
+  .util-toolbar,
+  .util-tab-bar,
+  .no-print {
+    display: none !important;
+  }
+
+  .main_area {
+    padding: 0 !important;
+  }
+
+  .util-card {
+    background: #fff !important;
+    border: 1.5px solid #000 !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .util-card-header {
+    background: #000 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .util-participant-badge {
+    background: #eee !important;
+    color: #000 !important;
+    border: 1px solid #555 !important;
+  }
+
+  .util-print-header {
+    display: block !important;
+  }
+
+  .util-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 15px !important;
+  }
 }

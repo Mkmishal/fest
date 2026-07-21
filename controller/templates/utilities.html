@@ -1,0 +1,494 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .util-print-header {
+        display: none;
+        text-align: center;
+        padding: 20px 0 10px 0;
+        border-bottom: 2px solid #000;
+        margin-bottom: 20px;
+    }
+    .util-print-header h1 {
+        font-size: 1.5rem;
+        color: #000;
+        background: none;
+        -webkit-text-fill-color: #000;
+        font-family: Georgia, serif;
+        margin-bottom: 4px;
+    }
+    .util-print-header p { font-size: 0.9rem; color: #333; }
+
+    /* 1. Default View (Desktop & Large Screens) */
+    .util-toolbar {
+        display: flex;
+        justify-content: center;   /* Centers horizontally */
+        align-items: center;       /* Centers vertically */
+        flex-wrap: nowrap;         /* STRICTLY one line */
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    /* 2. Mobile & Tablet View (Screens smaller than 768px) */
+    @media (max-width: 768px) {
+        .util-toolbar {
+            flex-wrap: wrap;       /* Allows elements to drop to the next line */
+            
+            /* Optional: If you want them to neatly stack vertically on small phones 
+            instead of just wrapping randomly, uncomment the line below: */
+            /* flex-direction: column; */ 
+        }
+    }
+
+    .util-tab-bar {
+        display: flex;
+        gap: 8px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 6px;
+    }
+    .util-tab {
+        padding: 9px 20px;
+        border-radius: 8px;
+        font-size: 0.92rem;
+        font-family: var(--font-display);
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0;
+        width: auto;
+        box-shadow: none;
+    }
+    .util-tab:hover { color: #fff; background: rgba(255,255,255,0.05); transform: none; }
+    .util-tab.active {
+        background: linear-gradient(135deg, var(--accent-primary) 0%, #6d28d9 100%);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(139,92,246,0.35);
+    }
+    
+    
+    /* NEW: Sort Select Dropdown Styling */
+    .util-sort {
+        padding: 9px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255,255,255,0.04);
+        color: var(--text-main);
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        outline: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        appearance: none;
+        -webkit-appearance: none;
+        /* Custom white arrow */
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+        padding-right: 40px;
+        min-width: 170px;
+    }
+    .util-sort:focus {
+        border-color: var(--accent-primary-hover);
+        box-shadow: 0 0 0 3px var(--accent-primary-glow);
+        background-color: rgba(255,255,255,0.07);
+    }
+    .util-sort option {
+        background: #1a1a2e; /* Solid dark background for dropdown items */
+        color: #fff;
+    }
+
+    .util-search {
+        padding: 9px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255,255,255,0.04);
+        color: var(--text-main);
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        outline: none;
+        min-width: 220px;
+        transition: all 0.2s ease;
+    }
+    .util-search:focus {
+        border-color: var(--accent-primary-hover);
+        box-shadow: 0 0 0 3px var(--accent-primary-glow);
+        background: rgba(255,255,255,0.07);
+    }
+    
+    .util-btn {
+        padding: 9px 18px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        font-family: var(--font-display);
+        cursor: pointer;
+        border: none;
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        width: auto;
+        margin: 0;
+    }
+    .util-btn-primary {
+        background: linear-gradient(135deg, var(--accent-primary) 0%, #6d28d9 100%);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(139,92,246,0.3);
+    }
+    .util-btn-primary:hover { box-shadow: 0 6px 20px rgba(139,92,246,0.5); transform: translateY(-1px); }
+    
+    .util-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+    .util-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+        transition: all 0.25s ease;
+    }
+    .util-card:hover {
+        border-color: rgba(139,92,246,0.3);
+        box-shadow: 0 8px 25px rgba(139,92,246,0.15);
+        transform: translateY(-2px);
+    }
+    .util-card-header {
+        padding: 14px 18px;
+        background: linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(6,182,212,0.12) 100%);
+        border-bottom: 1px solid var(--glass-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .util-card-title {
+        font-family: var(--font-display);
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1.35;
+        flex: 1;
+    }
+    .util-card-code {
+        font-size: 0.72rem;
+        color: var(--accent-secondary-hover);
+        font-weight: 700;
+        background: rgba(6,182,212,0.12);
+        border: 1px solid rgba(6,182,212,0.25);
+        padding: 3px 9px;
+        border-radius: 20px;
+        white-space: nowrap;
+    }
+    .util-card-meta {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        padding: 10px 18px 0 18px;
+    }
+    .util-meta-badge {
+        font-size: 0.71rem;
+        color: var(--text-muted);
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.07);
+        padding: 2px 8px;
+        border-radius: 20px;
+    }
+    .util-card-body { padding: 12px 18px 18px 18px; }
+    .util-participants-label {
+        font-size: 0.73rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 9px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .util-count-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, var(--accent-primary), #6d28d9);
+        padding: 1px 8px;
+        border-radius: 20px;
+    }
+    .util-participants-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .util-participant-badge {
+        font-size: 0.8rem;
+        font-family: var(--font-body);
+        color: var(--text-main);
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.09);
+        padding: 4px 10px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .util-participant-badge .role-tag { font-size: 0.68rem; color: var(--accent-secondary-hover); font-weight: 600; }
+    .util-empty { color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
+    .util-stats-bar { display: flex; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+    .util-stat {
+        background: var(--bg-surface);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .util-stat-value {
+        font-size: 1.7rem;
+        font-weight: 800;
+        font-family: var(--font-display);
+        background: linear-gradient(135deg, #fff 0%, var(--accent-primary-hover) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+    }
+    .util-stat-label { font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-body); font-weight: 500; }
+    .util-no-results {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+        font-family: var(--font-body);
+    }
+    .util-no-results span { font-size: 3rem; display: block; margin-bottom: 12px; }
+</style>
+
+<div style="width: 100%; max-width: 1300px; margin: 0 auto; padding: 0 20px 40px 20px;">
+
+    <!-- Print Header -->
+    <div class="util-print-header">
+        <h1>Utilities Report</h1>
+        <p>Generated: <span id="print-date"></span></p>
+    </div>
+
+    <!-- Page Title -->
+    <div style="margin-bottom: 25px;" class="no-print">
+        <h2 style="font-family: var(--font-display); font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0 0 4px 0;">🛠️ Utilities &amp; Reports</h2>
+        <p style="color: var(--text-muted); font-family: var(--font-body); margin: 0; font-size: 0.95rem;">View participants per program or programs per student — filter, sort, and print</p>
+        {% if leader_house %}
+        <div style="display:inline-flex; align-items:center; gap:8px; margin-top:10px; padding:6px 14px; border-radius:20px; background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(6,182,212,0.1)); border:1px solid rgba(139,92,246,0.3);">
+            <span style="font-size:0.85rem; color:var(--text-muted); font-family:var(--font-body);">Viewing house:</span>
+            <span style="font-size:0.88rem; font-weight:700; color:#c4b5fd; font-family:var(--font-display);">🏰 {{ leader_house }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="util-stats-bar no-print">
+        <div class="util-stat">
+            <span class="util-stat-value">{{ programs.count }}</span>
+            <span class="util-stat-label">Total Programs</span>
+        </div>
+        <div class="util-stat">
+            <span class="util-stat-value">{{ students.count }}</span>
+            <span class="util-stat-label">Total Students</span>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="util-toolbar">
+        <div class="util-tab-bar">
+            <button class="util-tab active" onclick="switchUtilTab('programs')" id="tab-programs-btn">
+                📋 Programs View
+            </button>
+            <button class="util-tab" onclick="switchUtilTab('students')" id="tab-students-btn">
+                🏃 Students View
+            </button>
+        </div>
+            <select class="util-sort" id="util-sort-select" onchange="sortCards()">
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="count-desc">Count (High to Low)</option>
+                <option value="count-asc">Count (Low to High)</option>
+            </select>
+            
+            <input type="text" class="util-search" id="util-search-input"
+                placeholder="🔍 Search programs..." oninput="filterCards()">
+            <button class="util-btn util-btn-primary" onclick="printPage()">
+                🖨️ Print
+            </button>
+    </div>
+
+    <!-- TAB: Programs → Participants -->
+    <div id="util-tab-programs">
+        <div class="util-cards-grid" id="programs-grid">
+            {% for program in programs %}
+            <!-- ADDED: data-name and data-count for JS sorting -->
+            <div class="util-card" 
+                 data-search="{{ program.name|lower }} {{ program.code|lower|default:'' }} {{ program.category|lower|default:'' }} {{ program.mode|lower|default:'' }} {{ program.section|lower|default:'' }}"
+                 data-name="{{ program.name|lower|default:'zzzz' }}"
+                 data-count="{{ program.program_participants.all|length }}">
+                
+                <div class="util-card-header">
+                    <div class="util-card-title">{{ program.name }}</div>
+                    <span class="util-card-code">{{ program.code|default:"—" }}</span>
+                </div>
+                <div class="util-card-meta">
+                    {% if program.category %}<span class="util-meta-badge">📁 {{ program.category }}</span>{% endif %}
+                    {% if program.mode %}<span class="util-meta-badge">⚙️ {{ program.mode }}</span>{% endif %}
+                    {% if program.type %}<span class="util-meta-badge">🎯 {{ program.type }}</span>{% endif %}
+                    {% if program.language %}<span class="util-meta-badge">🌐 {{ program.language }}</span>{% endif %}
+                    {% if program.section %}<span class="util-meta-badge">📂 {{ program.section }}</span>{% endif %}
+                </div>
+                <div class="util-card-body">
+                    <div class="util-participants-label">
+                        Participants <span class="util-count-badge">{{ program.program_participants.all|length }}</span>
+                    </div>
+                    <div class="util-participants-list">
+                        {% for pp in program.program_participants.all %}
+                        <span class="util-participant-badge">
+                            {{ pp.participant.name|default:"Unknown" }}
+                            {% if pp.role and pp.role != 'Participant' %}<span class="role-tag">({{ pp.role }})</span>{% endif %}
+                        </span>
+                        {% empty %}
+                        <span class="util-empty">No participants assigned</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="util-no-results"><span>📋</span><p>No programs found.</p></div>
+            {% endfor %}
+            <div class="util-no-results" id="programs-no-match" style="display:none;"><span>🔍</span><p>No programs match your search.</p></div>
+        </div>
+    </div>
+
+    <!-- TAB: Students → Programs -->
+    <div id="util-tab-students" style="display:none;">
+        <div class="util-cards-grid" id="students-grid">
+            {% for student in students %}
+            <!-- ADDED: data-name and data-count for JS sorting -->
+            <div class="util-card" 
+                 data-search="{{ student.name|lower|default:'' }} {{ student.adno|lower|default:'' }} {{ student.house|lower|default:'' }} {{ student.category|lower|default:'' }} {{ student.section|lower|default:'' }}"
+                 data-name="{{ student.name|lower|default:'zzzz' }}"
+                 data-count="{{ student.student_programs.count }}">
+                 
+                <div class="util-card-header">
+                    <div class="util-card-title">{{ student.name|default:"Unknown Student" }}</div>
+                    <span class="util-card-code">{{ student.adno|default:"—" }}</span>
+                </div>
+                <div class="util-card-meta">
+                    {% if student.house %}<span class="util-meta-badge">🏰 {{ student.house }}</span>{% endif %}
+                    {% if student.category %}<span class="util-meta-badge">📁 {{ student.category }}</span>{% endif %}
+                    {% if student.section %}<span class="util-meta-badge">📂 {{ student.section }}</span>{% endif %}
+                    {% if student.grade %}<span class="util-meta-badge">🎓 Grade {{ student.grade }}</span>{% endif %}
+                </div>
+                <div class="util-card-body">
+                    <div class="util-participants-label">
+                        Registered Programs <span class="util-count-badge">{{ student.student_programs.count }}</span>
+                    </div>
+                    <div class="util-participants-list">
+                        {% for pp in student.student_programs.all %}
+                        <span class="util-participant-badge">
+                            {{ pp.program.name|default:"Unknown Program" }}
+                            {% if pp.role and pp.role != 'Participant' %}<span class="role-tag">({{ pp.role }})</span>{% endif %}
+                        </span>
+                        {% empty %}
+                        <span class="util-empty">No programs assigned</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="util-no-results"><span>🏃</span><p>No students found.</p></div>
+            {% endfor %}
+            <div class="util-no-results" id="students-no-match" style="display:none;"><span>🔍</span><p>No students match your search.</p></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let currentTab = 'programs';
+
+    document.getElementById('print-date').textContent = new Date().toLocaleDateString('en-IN', {
+        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    // Run sort on initial load to respect default dropdown state
+    document.addEventListener("DOMContentLoaded", function() {
+        sortCards(); 
+    });
+
+    function switchUtilTab(tab) {
+        currentTab = tab;
+        document.getElementById('util-tab-programs').style.display = tab === 'programs' ? 'block' : 'none';
+        document.getElementById('util-tab-students').style.display = tab === 'students' ? 'block' : 'none';
+        document.getElementById('tab-programs-btn').classList.toggle('active', tab === 'programs');
+        document.getElementById('tab-students-btn').classList.toggle('active', tab === 'students');
+        
+        const input = document.getElementById('util-search-input');
+        input.placeholder = tab === 'programs' ? '🔍 Search programs...' : '🔍 Search students...';
+        input.value = '';
+        
+        filterCards();
+        sortCards(); // Ensure the active sort is applied when switching tabs
+    }
+
+    function filterCards() {
+        const query = document.getElementById('util-search-input').value.toLowerCase().trim();
+        const gridId = currentTab === 'programs' ? 'programs-grid' : 'students-grid';
+        const noMatchId = currentTab === 'programs' ? 'programs-no-match' : 'students-no-match';
+        const cards = document.querySelectorAll(`#${gridId} .util-card`);
+        let visible = 0;
+
+        cards.forEach(card => {
+            const match = !query || (card.getAttribute('data-search') || '').includes(query);
+            card.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+
+        const noMatch = document.getElementById(noMatchId);
+        if (noMatch) noMatch.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    // NEW: Function to handle sorting based on data attributes
+    function sortCards() {
+        const sortVal = document.getElementById('util-sort-select').value;
+        const gridId = currentTab === 'programs' ? 'programs-grid' : 'students-grid';
+        const grid = document.getElementById(gridId);
+        
+        // Convert NodeList to Array for sorting
+        const cards = Array.from(grid.querySelectorAll('.util-card'));
+
+        cards.sort((a, b) => {
+            if (sortVal === 'name-asc') {
+                return a.dataset.name.localeCompare(b.dataset.name);
+            } else if (sortVal === 'name-desc') {
+                return b.dataset.name.localeCompare(a.dataset.name);
+            } else if (sortVal === 'count-desc') {
+                return parseInt(b.dataset.count) - parseInt(a.dataset.count);
+            } else if (sortVal === 'count-asc') {
+                return parseInt(a.dataset.count) - parseInt(b.dataset.count);
+            }
+        });
+
+        // Re-append to grid (this naturally re-orders them without duplicating)
+        cards.forEach(card => grid.appendChild(card));
+    }
+
+    function printPage() {
+        window.print();
+    }
+</script>
+{% endblock %}

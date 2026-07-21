@@ -26,7 +26,18 @@ SECRET_KEY = 'django-insecure-7b@ofvj3^j8s-f8(74i=$7pzvuu2em$tuw@xld%u-in-lm366m
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.1.77','127.0.0.1','*']
+ALLOWED_HOSTS = ['127.0.0.1','artsfest.ddns.net']
+
+# to run the server on ipv4 address, use the following command:
+# python manage.py runserver 0.0.0.0:8000
+
+
+# to run the server on ipv6 address, use the following command:
+# python manage.py runserver [::]:8000
+# use :80 for http server and :443 for https server 
+# to run the server on ipv6 address with https, use the following command:
+# python manage.py runserver_plus --cert-file cert.pem [::]:443
+
 
 
 # Application definition
@@ -41,6 +52,7 @@ INSTALLED_APPS = [
     'import_export',
     'controller',
     'channels',
+    'django_extensions',
 ]
 
 ASGI_APPLICATION = 'housing.asgi.application'

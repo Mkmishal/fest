@@ -4,248 +4,819 @@
 {% block content %}
 
 <style>
-    /* Custom Checkboxes inside table cells */
-    .custom-checkbox {
-      display: inline-block;
-      position: relative;
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      user-select: none;
-    }
+  /* Custom Checkboxes inside table cells */
+  .custom-checkbox {
+    display: inline-block;
+    position: relative;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    user-select: none;
+  }
 
-    .custom-checkbox input {
-      position: absolute;
-      opacity: 0;
-      cursor: pointer;
-      height: 0;
-      width: 0;
-    }
+  .custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
 
-    .checkmark {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 20px;
-      width: 20px;
-      background-color: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--glass-border);
-      border-radius: 4px;
-      transition: var(--transition-fast);
-    }
+  .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 20px;
+    width: 20px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 4px;
+    transition: var(--transition-fast);
+  }
 
-    .custom-checkbox:hover input ~ .checkmark {
-      background-color: rgba(255, 255, 255, 0.12);
-      border-color: var(--accent-primary-hover);
-    }
+  .custom-checkbox:hover input~.checkmark {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: var(--accent-primary-hover);
+  }
 
-    .custom-checkbox input:checked ~ .checkmark {
-      background: linear-gradient(135deg, var(--accent-secondary) 0%, #0891b2 100%);
-      border-color: transparent;
-      box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
-    }
+  .custom-checkbox input:checked~.checkmark {
+    background: linear-gradient(135deg, var(--accent-secondary) 0%, #0891b2 100%);
+    border-color: transparent;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+  }
 
-    .checkmark:after {
-      content: "";
-      position: absolute;
-      display: none;
-    }
+  .checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+  }
 
-    .custom-checkbox input:checked ~ .checkmark:after {
-      display: block;
-    }
+  .custom-checkbox input:checked~.checkmark:after {
+    display: block;
+  }
 
-    .custom-checkbox .checkmark:after {
-      left: 6px;
-      top: 2px;
-      width: 5px;
-      height: 10px;
-      border: solid white;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-    }
+  .custom-checkbox .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
 
-    /* Grid Table styles */
-    .grid-table-container {
-      overflow-x: auto;
-      max-width: 100%;
-      border-radius: 12px;
-      border: 1px solid var(--glass-border);
-      background: rgba(25, 15, 48, 0.35);
-      margin-top: 15px;
-      box-shadow: var(--shadow-md);
-    }
+  /* Grid Table styles */
+  .grid-table-container {
+    overflow-x: auto;
+    max-width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: rgba(25, 15, 48, 0.35);
+    margin-top: 15px;
+    box-shadow: var(--shadow-md);
+  }
 
-    .grid-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: center;
-    }
+  .grid-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+  }
 
-    .grid-table th, 
-    .grid-table td {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--glass-border);
-      border-right: 1px solid rgba(255, 255, 255, 0.04);
-    }
+  .grid-table th,
+  .grid-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--glass-border);
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+  }
 
-    .grid-table th {
-      background-color: #130a24;
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: var(--text-light);
-      white-space: nowrap;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+  .grid-table th {
+    background-color: #130a24;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
 
-    /* Sticky first column (Student Name) */
-    .grid-table th:first-child,
-    .grid-table td:first-child {
-      position: sticky;
-      left: 0;
-      background-color: #130a24;
-      z-index: 10;
-      text-align: left;
-      border-right: 2px solid var(--glass-border);
-      font-weight: 500;
-      color: #fff;
-      min-width: 200px;
-      box-shadow: 4px 0 8px rgba(0,0,0,0.2);
-    }
+  /* Sticky first column (Student Name) */
+  .grid-table th:first-child,
+  .grid-table td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: #130a24;
+    z-index: 10;
+    text-align: left;
+    border-right: 2px solid var(--glass-border);
+    font-weight: 500;
+    color: #fff;
+    min-width: 200px;
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.2);
+  }
 
-    .grid-table td:first-child {
-      background-color: #1a0f30;
-    }
+  .grid-table td:first-child {
+    background-color: #1a0f30;
+  }
 
-    .grid-table tr:hover td:first-child {
-      background-color: #241642;
-    }
+  .grid-table tr:hover td:first-child {
+    background-color: #241642;
+  }
 
-    .grid-table tbody tr:hover {
-      background-color: rgba(255, 255, 255, 0.03);
-    }
+  .grid-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
 
-    .grid-table tbody tr:last-child td {
-      border-bottom: none;
-    }
+  .grid-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Header Rotation Styles */
+  .rotate-headers .grid-table {
+    width: auto !important;
+  }
+
+  .rotate-headers th.axis-header {
+    height: 180px;
+    vertical-align: bottom;
+    padding: 10px 4px !important;
+    min-width: 50px;
+    max-width: 50px;
+    width: 50px;
+  }
+
+  .rotate-headers th.axis-header .axis-header-text {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    display: inline-block;
+    text-align: left;
+    margin: 0 auto;
+    max-height: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Make sure the badge itself is not rotated in header rotation mode */
+  .rotate-headers th.axis-header .program-limit-badge {
+    writing-mode: horizontal-tb;
+    transform: none;
+    margin-top: 4px;
+  }
+
+  /* Actions styling for headers */
+  .btn-action-small {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-light);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+
+  .btn-action-small:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-color: var(--accent-primary-hover);
+  }
 </style>
 
-<div class="control_panel" style="width: 95%; max-width: 1300px; margin: 0 auto 30px auto; background: var(--bg-surface);">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
-        <div>
-            <h1>Candidate Registration</h1>
-            <p style="color: var(--text-muted); margin: 5px 0 0 0;">Register students into their category programs</p>
-        </div>
-        
-        <!-- Admin House Switcher -->
-        {% if is_admin %}
-        <form method="GET" action="" style="width: auto; display: flex; align-items: center; gap: 10px; margin: 0;">
-            <label style="margin: 0; white-space: nowrap; color: var(--text-light);">Select House:</label>
-            <select name="house" onchange="this.form.submit()" style="width: 200px; padding: 8px 12px; font-size: 0.9rem; margin: 0;">
-                {% for house in all_houses %}
-                    <option value="{{ house }}" {% if house == selected_house %}selected{% endif %}>{{ house|capfirst }}</option>
-                {% endfor %}
-            </select>
-        </form>
-        {% endif %}
+<div class="control_panel"
+  style="width: 95%; max-width: 1300px; margin: 0 auto 30px auto; background: var(--bg-surface);">
+  <div
+    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
+    <div>
+      <h1>Candidate Registration</h1>
+      <p style="color: var(--text-muted); margin: 5px 0 0 0;">Register students into their category programs</p>
     </div>
 
-    {% if messages %}
-        <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 25px;">
-            <ul style="list-style: none; padding: 0; margin: 0;">
-                {% for message in messages %}
-                    <li style="color: var(--success); font-weight: 500;">✅ {{ message }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-    {% endif %}
+    <!-- Filters Switcher Form -->
+    <form method="GET" action="" style="width: auto; display: flex; align-items: center; gap: 15px; margin: 0; flex-wrap: wrap;">
+      {% if is_admin %}
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label style="margin: 0; white-space: nowrap; color: var(--text-light); font-size: 0.9rem;">Select House:</label>
+        <select name="house" onchange="this.form.submit()"
+          style="width: 180px; padding: 8px 12px; font-size: 0.9rem; margin: 0;">
+          {% for house in all_houses %}
+          <option value="{{ house }}" {% if house == selected_house %}selected{% endif %}>{{ house|capfirst }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
 
-    {% if not candidate_registration_active and not is_admin %}
-        <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 25px;">
-            <p style="color: var(--warning); font-weight: 500; margin: 0;">⚠️ Candidate registration is currently closed. You can view your assignments, but changes are disabled.</p>
-        </div>
-    {% endif %}
-
-    <form method="post" action="">
-        {% csrf_token %}
-
-        <!-- Sticky Form Action Header at top of page -->
-        <div style="position: sticky; top: 100px; z-index: 100; margin-bottom: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(19, 10, 36, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); padding: 15px 25px; border-radius: 12px; box-shadow: var(--shadow-lg);">
-                <div>
-                    <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Configuring House</span>
-                    <h2 style="font-family: var(--font-display); font-size: 1.3rem; color: var(--accent-secondary-hover); margin: 2px 0 0 0; text-transform: capitalize;">
-                        🏡 {{ selected_house }}
-                    </h2>
-                </div>
-                {% if candidate_registration_active or is_admin %}
-                <div style="width: auto;">
-                    <button type="submit" style="width: auto; padding: 10px 30px; font-size: 0.95rem; margin: 0;">Save Assignments</button>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        {% if grids %}
-            {% for grid in grids %}
-                <div style="margin-bottom: 40px; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--glass-border); padding: 25px; border-radius: 16px;">
-                    <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: #fff; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
-                        <span>📂</span> Category: {{ grid.category }}
-                    </h3>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
-                        {{ grid.students|length }} students • {{ grid.programs|length }} programs
-                    </p>
-
-                    <div class="grid-table-container">
-                        <table class="grid-table">
-                            <thead>
-                                <tr>
-                                    <th>Student</th>
-                                    {% for program in grid.programs %}
-                                        <th title="{{ program.name }} (Code: {{ program.code }})">
-                                            {{ program.name|truncatechars:20 }}
-                                        </th>
-                                    {% endfor %}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for student in grid.students %}
-                                    <tr>
-                                        <td>
-                                            <div style="font-weight: 600; color: #fff;">{{ student.name }}</div>
-                                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
-                                                Adno: {{ student.adno }} | Gr: {{ student.grade }}
-                                            </div>
-                                        </td>
-                                        {% for program in grid.programs %}
-                                            <td>
-                                                <label class="custom-checkbox" {% if not candidate_registration_active and not is_admin %}style="cursor: not-allowed;"{% endif %}>
-                                                    <input type="checkbox" name="assign_{{ student.id }}_{{ program.id }}"
-                                                        {% if program.id in assignments|get_item:student.id %}checked{% endif %}
-                                                        {% if not candidate_registration_active and not is_admin %}disabled{% endif %}>
-                                                    <span class="checkmark" {% if not candidate_registration_active and not is_admin %}style="opacity: 0.5;"{% endif %}></span>
-                                                </label>
-                                            </td>
-                                        {% endfor %}
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            {% endfor %}
-        {% else %}
-            <div style="text-align: center; padding: 50px 30px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px;">
-                <span style="font-size: 3rem;">📭</span>
-                <h3 style="color: #fff; margin-top: 15px; font-family: var(--font-display);">No Student-Program Grids</h3>
-                <p style="color: var(--text-muted); max-width: 450px; margin: 10px auto 0 auto; font-size: 0.95rem;">
-                    We couldn't find any students and programs belonging to the same category for the house <strong>{{ selected_house }}</strong>. Please ensure students have a category assigned.
-                </p>
-            </div>
-        {% endif %}
-
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label style="margin: 0; white-space: nowrap; color: var(--text-light); font-size: 0.9rem;">Select Category:</label>
+        <select name="category" onchange="this.form.submit()"
+          style="width: 180px; padding: 8px 12px; font-size: 0.9rem; margin: 0;">
+          {% for cat in dropdown_categories %}
+          <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </form>
+  </div>
+
+  {% if messages %}
+  <div
+    style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      {% for message in messages %}
+      <li style="color: var(--success); font-weight: 500;">✅ {{ message }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if not candidate_registration_active and not is_admin %}
+  <div
+    style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+    <p style="color: var(--warning); font-weight: 500; margin: 0;">⚠️ Candidate registration is currently closed. You
+      can view your assignments, but changes are disabled.</p>
+  </div>
+  {% endif %}
+
+  <form method="post" action="">
+    {% csrf_token %}
+
+    <!-- Sticky Form Action Header at top of page -->
+    <div style="position: sticky; top: 100px; z-index: 100; margin-bottom: 30px;">
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; background: rgba(19, 10, 36, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); padding: 15px 25px; border-radius: 12px; box-shadow: var(--shadow-lg);">
+        <div>
+          <span
+            style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Configuring
+            House</span>
+          <h2
+            style="font-family: var(--font-display); font-size: 1.3rem; color: var(--accent-secondary-hover); margin: 2px 0 0 0; text-transform: capitalize;">
+            🏡 {{ selected_house }}
+          </h2>
+        </div>
+        {% if candidate_registration_active or is_admin %}
+        <div style="width: auto;">
+          <button type="submit" style="width: auto; padding: 10px 30px; font-size: 0.95rem; margin: 0;">Save
+            Assignments</button>
+        </div>
+        {% endif %}
+      </div>
+      {% if grids %}
+      {% for grid in grids %}
+      <div class="grid-card"
+        style="margin-bottom: 40px; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--glass-border); padding: 25px; border-radius: 16px;">
+        <div
+          style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+          <div>
+            <h3
+              style="font-family: var(--font-display); font-size: 1.25rem; color: #fff; margin: 0 0 5px 0; display: flex; align-items: center; gap: 8px;">
+              <span>📂</span> Category: {{ grid.category }}
+            </h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">
+              {{ grid.students|length }} students • {{ grid.programs|length }} programs
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button type="button" onclick="toggleTranspose(this)" class="btn-action-small">
+              🔄 Swap Axes
+            </button>
+            <button type="button" onclick="toggleHeaderRotation(this)" class="btn-action-small">
+              📐 Rotate Headers
+            </button>
+          </div>
+        </div>
+
+        <!-- Normal Grid (Students on Y, Programs on X) -->
+        <div class="grid-table-container normal-table-container">
+          <table class="grid-table normal-table">
+            <thead>
+              <tr>
+                <th rowspan="2" style="border-right: 2px solid var(--glass-border); vertical-align: middle;">Student
+                </th>
+                {% for block in grid.blocks %}
+                <th colspan="{{ block.colspan }}"
+                  style="text-align: center; font-family: var(--font-display); font-size: 0.75rem; font-weight: 700; color: #fff; background-color: {{ block.bg }}; border-bottom: 2px solid {{ block.color }}; border-left: 1px solid var(--glass-border); border-right: 1px solid var(--glass-border); letter-spacing: 0.05em; padding: 8px 10px; text-transform: uppercase;">
+                  {{ block.label }}
+                </th>
+                {% endfor %}
+              </tr>
+              <tr>
+                {% for block in grid.blocks %}
+                {% for program in block.programs %}
+                 <th class="axis-header" title="{{ program.name }} (Code: {{ program.code }})"
+                   style="border-top: 1.5px solid {{ block.color }}; {% if forloop.first %}border-left: 2px solid {{ block.color }}55;{% endif %}">
+                   <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px;">
+                     <span class="axis-header-text">
+                       {{ program.name|truncatechars:18 }}
+                     </span>
+                     <span class="program-limit-badge" data-program-id="{{ program.id }}"
+                       data-limit="{{ program.team_limit|default:'' }}"
+                       style="font-size: 0.72rem; font-weight: 600; opacity: 0.95; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(0,0,0,0.22); border: 1px solid var(--glass-border); white-space: nowrap; color: #fff;">
+                       (<span class="current-count">0</span>/{{ program.team_limit|default:'∞' }})
+                     </span>
+                   </div>
+                 </th>
+                {% endfor %}
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for student in grid.students %}
+              <tr>
+                <td>
+                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%;">
+                    <!-- Left: Student Info & Specific Constraint Badges -->
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ student.name }}</div>
+                      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                        Adno: {{ student.adno }} | Gr: {{ student.grade }}
+                      </div>
+                      
+                      <!-- Student Category Rules Indicators -->
+                      {% if student.rules %}
+                      <div class="student-rule-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; justify-content: flex-start;">
+                        {% for rule in student.rules %}
+                        {% with mode=rule.program_mode|upper type=rule.program_type|upper %}
+                        {% if rule.language or rule.is_multilingual|yesno:'true,false,none' != 'none' or rule.skill or rule.role or rule.program_mode and not rule.program_type or not rule.program_mode and rule.program_type %}
+                        <span class="student-rule-badge" data-student-id="{{ student.id }}" data-rule-id="{{ rule.id }}"
+                          data-mode="{{ rule.program_mode|default:'' }}" data-type="{{ rule.program_type|default:'' }}"
+                          data-lang="{{ rule.language|default:'' }}"
+                          data-multi="{{ rule.is_multilingual|yesno:'true,false,none' }}"
+                          data-skill="{{ rule.skill|default:'' }}" data-role="{{ rule.role|default:'' }}"
+                          data-max="{{ rule.max_count }}" {% if mode == 'STAGE' and type == 'INDIVIDUAL' %}
+                          data-normal-color="#c084fc" data-normal-bg="rgba(192, 132, 252, 0.06)"
+                          data-normal-border="rgba(192, 132, 252, 0.25)"
+                          style="font-size: 0.65rem; padding: 1px 4px; border-radius: 4px; color: #c084fc; background: rgba(192, 132, 252, 0.06); border: 1px solid rgba(192, 132, 252, 0.25); display: inline-flex; align-items: center; gap: 2px; transition: all 0.2s;"
+                          {% elif mode == 'STAGE' and type == 'GROUP' %} data-normal-color="#818cf8"
+                          data-normal-bg="rgba(129, 140, 248, 0.06)" data-normal-border="rgba(129, 140, 248, 0.25)"
+                          style="font-size: 0.65rem; padding: 1px 4px; border-radius: 4px; color: #818cf8; background: rgba(129, 140, 248, 0.06); border: 1px solid rgba(129, 140, 248, 0.25); display: inline-flex; align-items: center; gap: 2px; transition: all 0.2s;"
+                          {% elif mode == 'NON STAGE' and type == 'INDIVIDUAL' %} data-normal-color="#fb923c"
+                          data-normal-bg="rgba(255, 146, 60, 0.06)" data-normal-border="rgba(255, 146, 60, 0.25)"
+                          style="font-size: 0.65rem; padding: 1px 4px; border-radius: 4px; color: #fb923c; background: rgba(255, 146, 60, 0.06); border: 1px solid rgba(255, 146, 60, 0.25); display: inline-flex; align-items: center; gap: 2px; transition: all 0.2s;"
+                          {% elif mode == 'NON STAGE' and type == 'GROUP' %} data-normal-color="#2dd4bf"
+                          data-normal-bg="rgba(45, 212, 191, 0.06)" data-normal-border="rgba(45, 212, 191, 0.25)"
+                          style="font-size: 0.65rem; padding: 1px 4px; border-radius: 4px; color: #2dd4bf; background: rgba(45, 212, 191, 0.06); border: 1px solid rgba(45, 212, 191, 0.25); display: inline-flex; align-items: center; gap: 2px; transition: all 0.2s;"
+                          {% else %} data-normal-color="var(--text-muted)" data-normal-bg="rgba(255,255,255,0.04)"
+                          data-normal-border="var(--glass-border)"
+                          style="font-size: 0.65rem; padding: 1px 4px; border-radius: 4px; color: var(--text-muted); background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); display: inline-flex; align-items: center; gap: 2px; transition: all 0.2s;"
+                          {% endif %}>
+                          <span class="rule-label" style="font-weight: 500; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {% if mode == 'STAGE' and type == 'INDIVIDUAL' %}🎭 STAGE IND
+                            {% elif mode == 'STAGE' and type == 'GROUP' %}👥 STAGE GRP
+                            {% elif mode == 'STAGE' and type == '' %}🎭 STAGE
+                            {% elif mode == 'NON STAGE' and type == 'INDIVIDUAL' %}📝 NON-STAGE IND
+                            {% elif mode == 'NON STAGE' and type == 'GROUP' %}🤝 NON-STAGE GRP
+                            {% elif mode == 'NON STAGE' and type == '' %}📝 NON-STAGE
+                            {% else %}
+                            {% if rule.program_mode %}{{ rule.program_mode|upper }} {% endif %}
+                            {% if rule.program_type %}{{ rule.program_type|upper }} {% endif %}
+                            {% if rule.language %}LANG:{{ rule.language|upper }} {% endif %}
+                            {% if rule.is_multilingual|yesno:'true,false,none' != 'none' %}MULTI:{{ rule.is_multilingual|yesno:'YES,NO' }} {% endif %}
+                            {% if rule.skill %}SKILL:{{ rule.skill|upper }} {% endif %}
+                            {% endif %}
+                          </span>:
+                          <strong style="color: #fff;"><span class="rule-current">0</span>/{{ rule.max_count }}</strong>
+                        </span>
+                        {% else %}
+                        <!-- Hidden badge so JavaScript can extract total limit constraint -->
+                        <span class="student-rule-badge" data-student-id="{{ student.id }}" data-rule-id="{{ rule.id }}"
+                          data-mode="{{ rule.program_mode|default:'' }}" data-type="{{ rule.program_type|default:'' }}"
+                          data-lang="{{ rule.language|default:'' }}"
+                          data-multi="{{ rule.is_multilingual|yesno:'true,false,none' }}"
+                          data-skill="{{ rule.skill|default:'' }}" data-role="{{ rule.role|default:'' }}"
+                          data-max="{{ rule.max_count }}" style="display: none;">
+                          <span class="rule-current">0</span>
+                        </span>
+                        {% endif %}
+                        {% endwith %}
+                        {% endfor %}
+                      </div>
+                      {% endif %}
+                    </div>
+                    
+                    <!-- Right: Dynamic Assignment Summary Metrics in 2 rows -->
+                    <div class="student-assignment-summary" data-student-id="{{ student.id }}"
+                      style="display: flex; flex-direction: column; gap: 4px; background: rgba(0,0,0,0.15); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--glass-border); font-size: 0.65rem; font-weight: 600; text-align: center; min-width: 65px;">
+                      <!-- Row 1: Tot and Stage -->
+                      <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
+                        <span style="color: #60a5fa;" title="Total">Tot:<span class="sum-total">0</span></span>
+                        <span style="color: #c084fc;" title="Stage Individual"><span class="sum-stage-ind">0</span></span>
+                        <span style="color: #818cf8;" title="Stage Group"><span class="sum-stage-grp">0</span></span>
+                      </div>
+                      <!-- Row 2: Non-Stage -->
+                      <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
+                        <span style="color: #fb923c;" title="Non-Stage Individual"><span class="sum-nonstage-ind">0</span></span>
+                        <span style="color: #2dd4bf;" title="Non-Stage Group"><span class="sum-nonstage-grp">0</span></span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                {% for block in grid.blocks %}
+                {% for program in block.programs %}
+                <td style="{% if forloop.first %}border-left: 2px solid {{ block.color }}55;{% endif %}">
+                  <label class="custom-checkbox" {% if not candidate_registration_active and not is_admin %}style="cursor: not-allowed;"{% endif %}>
+                    <input type="checkbox" name="assign_{{ student.id }}_{{ program.id }}" data-student-id="{{ student.id }}" data-program-id="{{ program.id }}" data-mode="{{ program.mode|default:'' }}" data-type="{{ program.type|default:'' }}" data-lang="{{ program.language|default:'' }}" data-multi="{{ program.is_multilingual|yesno:'true,false' }}" data-skill="{{ program.skill|default:'' }}" data-role="Participant" {% if program.id in assignments|get_item:student.id %}checked{% endif %} {% if not candidate_registration_active and not is_admin %}disabled{% endif %}>
+                    <span class="checkmark" style="{% if not candidate_registration_active and not is_admin %}opacity: 0.5;{% endif %} border-color: {{ block.color }}88;"></span>
+                  </label>
+                </td>
+                {% endfor %}
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Transposed Grid (Programs on Y, Students on X) -->
+        <div class="grid-table-container transposed-table-container" style="display: none;">
+          <table class="grid-table transposed-table">
+            <thead>
+              <tr>
+                <th>Program</th>
+                {% for student in grid.students %}
+                <th class="axis-header" title="{{ student.name }} (Adno: {{ student.adno }})">
+                  <span class="axis-header-text">{{ student.name|truncatechars:20 }}</span>
+                </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for block in grid.blocks %}
+              <!-- Block Group Divider Row -->
+              <tr style="background: {{ block.bg }}; border-left: 4px solid {{ block.color }};">
+                <td colspan="{{ grid.students|length|add:1 }}"
+                  style="text-align: left; padding: 10px 18px; font-family: var(--font-display); font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--glass-border);">
+                  {{ block.label }}
+                </td>
+              </tr>
+              {% for program in block.programs %}
+              <tr>
+                <td style="text-align: left; border-left: 3px solid {{ block.color }}cc;">
+                  <div
+                    style="font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                    <span>{{ program.name }}</span>
+                    <span class="program-limit-badge" data-program-id="{{ program.id }}"
+                      data-limit="{{ program.team_limit|default:'' }}"
+                      style="font-size: 0.8rem; font-weight: 500; opacity: 0.9;">
+                      (<span class="current-count">0</span>/{{ program.team_limit|default:'∞' }})
+                    </span>
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                    Code: {{ program.code }} | Mode: {{ program.mode }}
+                  </div>
+                </td>
+                {% for student in grid.students %}
+                <td>
+                  <label class="custom-checkbox" {% if not candidate_registration_active and not is_admin %}style="cursor: not-allowed;"{% endif %}>
+                    <input type="checkbox" name="assign_{{ student.id }}_{{ program.id }}" data-student-id="{{ student.id }}" data-program-id="{{ program.id }}" data-mode="{{ program.mode|default:'' }}" data-type="{{ program.type|default:'' }}" data-lang="{{ program.language|default:'' }}" data-multi="{{ program.is_multilingual|yesno:'true,false' }}" data-skill="{{ program.skill|default:'' }}" data-role="Participant" {% if program.id in assignments|get_item:student.id %}checked{% endif %} {% if not candidate_registration_active and not is_admin %}disabled{% endif %}>
+                    <span class="checkmark" style="{% if not candidate_registration_active and not is_admin %}opacity: 0.5;{% endif %} border-color: {{ block.color }}88;"></span>
+                  </label>
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div
+        style="text-align: center; padding: 50px 30px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px;">
+        <span style="font-size: 3rem;">📭</span>
+        <h3 style="color: #fff; margin-top: 15px; font-family: var(--font-display);">No Student-Program Grids</h3>
+        <p style="color: var(--text-muted); max-width: 450px; margin: 10px auto 0 auto; font-size: 0.95rem;">
+          We couldn't find any students and programs belonging to the same category for the house <strong>{{
+            selected_house }}</strong>. Please ensure students have a category assigned.
+        </p>
+      </div>
+      {% endif %}
+
+  </form>
 </div>
+
+<script>
+  // Function to dynamically update program limit badge counts and color indicators
+  function updateProgramLimits() {
+    const badges = document.querySelectorAll('.program-limit-badge');
+    badges.forEach(badge => {
+      const programId = badge.getAttribute('data-program-id');
+      const limitAttr = badge.getAttribute('data-limit');
+      const limit = limitAttr ? parseInt(limitAttr, 10) : null;
+
+      // Count checked boxes corresponding to this program
+      const checkedBoxes = document.querySelectorAll(`input[type="checkbox"][name$="_${programId}"]:checked`);
+
+      // Count unique students to avoid double-counting due to transposed table sync
+      const uniqueStudentIds = new Set();
+      checkedBoxes.forEach(cb => {
+        const parts = cb.name.split('_');
+        if (parts.length >= 3) {
+          uniqueStudentIds.add(parts[1]);
+        }
+      });
+      const currentCount = uniqueStudentIds.size;
+
+      // Update all badges for this program (both normal and transposed)
+      const programBadges = document.querySelectorAll(`.program-limit-badge[data-program-id="${programId}"]`);
+      programBadges.forEach(b => {
+        const countSpan = b.querySelector('.current-count');
+        if (countSpan) {
+          countSpan.textContent = currentCount;
+        }
+
+        if (limit !== null) {
+          if (currentCount > limit) {
+            b.style.color = '#ef4444'; // Red
+            b.style.background = 'rgba(239, 68, 68, 0.15)';
+            b.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+            b.style.padding = '1px 6px';
+            b.style.borderRadius = '4px';
+            b.classList.add('limit-exceeded');
+          } else if (currentCount === limit) {
+            b.style.color = '#10b981'; // Green
+            b.style.background = 'rgba(16, 185, 129, 0.15)';
+            b.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+            b.style.padding = '1px 6px';
+            b.style.borderRadius = '4px';
+            b.classList.remove('limit-exceeded');
+          } else {
+            b.style.color = 'var(--text-muted)';
+            b.style.background = 'none';
+            b.style.border = 'none';
+            b.style.padding = '0';
+            b.classList.remove('limit-exceeded');
+          }
+        }
+      });
+    });
+
+    // NOW: Update student category rules counts dynamically!
+    // Group all checked checkboxes by student
+    const studentAssignments = {};
+    const allCheckedBoxes = document.querySelectorAll('input[type="checkbox"]:checked');
+    const seenAssignments = new Set();
+
+    allCheckedBoxes.forEach(cb => {
+      const studentId = cb.getAttribute('data-student-id');
+      const programId = cb.getAttribute('data-program-id');
+      if (studentId && programId) {
+        const key = `${studentId}_${programId}`;
+        if (!seenAssignments.has(key)) {
+          seenAssignments.add(key);
+
+          if (!studentAssignments[studentId]) {
+            studentAssignments[studentId] = [];
+          }
+          studentAssignments[studentId].push({
+            mode: cb.getAttribute('data-mode').toLowerCase(),
+            type: cb.getAttribute('data-type').toLowerCase(),
+            lang: cb.getAttribute('data-lang').toLowerCase(),
+            multi: cb.getAttribute('data-multi'), // "true" or "false"
+            skill: cb.getAttribute('data-skill').toLowerCase(),
+            role: cb.getAttribute('data-role').toLowerCase(),
+          });
+        }
+      }
+    });
+
+    const studentBadges = document.querySelectorAll('.student-rule-badge');
+    studentBadges.forEach(badge => {
+      const studentId = badge.getAttribute('data-student-id');
+      const max = parseInt(badge.getAttribute('data-max'), 10);
+
+      const bMode = badge.getAttribute('data-mode').toLowerCase();
+      const bType = badge.getAttribute('data-type').toLowerCase();
+      const bLang = badge.getAttribute('data-lang').toLowerCase();
+      const bMulti = badge.getAttribute('data-multi'); // "true", "false", or "none"
+      const bSkill = badge.getAttribute('data-skill').toLowerCase();
+      const bRole = badge.getAttribute('data-role').toLowerCase();
+
+      const assignments = studentAssignments[studentId] || [];
+      let matchCount = 0;
+
+      assignments.forEach(p => {
+        let matches = true;
+
+        let pType = p.type;
+        let rType = bType;
+        if (pType === 'single' || pType === 'individual') pType = 'single';
+        if (rType === 'single' || rType === 'individual') rType = 'single';
+
+        if (bMode && p.mode !== bMode) matches = false;
+        if (bType && pType !== rType) matches = false;
+        if (bLang && p.lang !== bLang) matches = false;
+        if (bMulti !== 'none' && p.multi !== bMulti) matches = false;
+        if (bSkill && p.skill !== bSkill) matches = false;
+        if (bRole && p.role !== bRole) matches = false;
+
+        if (matches) {
+          matchCount++;
+        }
+      });
+
+      // Update badge UI
+      const countSpan = badge.querySelector('.rule-current');
+      if (countSpan) {
+        countSpan.textContent = matchCount;
+      }
+
+      if (matchCount > max) {
+        badge.style.color = '#ef4444'; // Red
+        badge.style.background = 'rgba(239, 68, 68, 0.15)';
+        badge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+        badge.classList.add('limit-exceeded');
+      } else {
+        const normalColor = badge.getAttribute('data-normal-color') || 'var(--text-muted)';
+        const normalBg = badge.getAttribute('data-normal-bg') || 'rgba(255,255,255,0.04)';
+        const normalBorder = badge.getAttribute('data-normal-border') || 'var(--glass-border)';
+
+        badge.style.color = normalColor;
+        badge.style.background = normalBg;
+        badge.style.border = `1px solid ${normalBorder}`;
+        badge.classList.remove('limit-exceeded');
+      }
+    });
+
+    // Update student assignment summaries dynamically
+    const allStudents = document.querySelectorAll('.student-assignment-summary');
+    allStudents.forEach(summary => {
+      const studentId = summary.getAttribute('data-student-id');
+      const assignments = studentAssignments[studentId] || [];
+
+      let total = assignments.length;
+      let stageInd = 0;
+      let stageGrp = 0;
+      let nonStageInd = 0;
+      let nonStageGrp = 0;
+
+      assignments.forEach(p => {
+        const isStage = (p.mode === 'stage');
+        const isInd = (p.type === 'individual' || p.type === 'single');
+
+        if (isStage) {
+          if (isInd) {
+            stageInd++;
+          } else {
+            stageGrp++;
+          }
+        } else {
+          if (isInd) {
+            nonStageInd++;
+          } else {
+            nonStageGrp++;
+          }
+        }
+      });
+
+      // Look up if there is a general category total programs limit rule and other specific block limits
+      let totalLimit = null;
+      let stageIndLimit = null;
+      let stageGrpLimit = null;
+      let nonStageIndLimit = null;
+      let nonStageGrpLimit = null;
+      
+      const studentBadges = document.querySelectorAll(`.student-rule-badge[data-student-id="${studentId}"]`);
+      studentBadges.forEach(badge => {
+        const bMode = (badge.getAttribute('data-mode') || '').toLowerCase();
+        const bType = (badge.getAttribute('data-type') || '').toLowerCase();
+        const bLang = (badge.getAttribute('data-lang') || '').toLowerCase();
+        const bMulti = badge.getAttribute('data-multi');
+        const bSkill = (badge.getAttribute('data-skill') || '').toLowerCase();
+        const bRole = (badge.getAttribute('data-role') || '').toLowerCase();
+        
+        // General limit
+        if (!bMode && !bType && !bLang && (bMulti === 'none' || !bMulti) && !bSkill && !bRole) {
+          totalLimit = parseInt(badge.getAttribute('data-max'), 10);
+        }
+        
+        // Block-specific limits
+        const isBlockOnly = !bLang && (bMulti === 'none' || !bMulti) && !bSkill && !bRole;
+        if (isBlockOnly) {
+          const limitVal = parseInt(badge.getAttribute('data-max'), 10);
+          const isInd = (bType === 'individual' || bType === 'single');
+          if (bMode === 'stage') {
+            if (isInd) {
+              stageIndLimit = limitVal;
+            } else if (bType === 'group') {
+              stageGrpLimit = limitVal;
+            }
+          } else if (bMode === 'non stage' || bMode === 'off-stage') {
+            if (isInd) {
+              nonStageIndLimit = limitVal;
+            } else if (bType === 'group') {
+              nonStageGrpLimit = limitVal;
+            }
+          }
+        }
+      });
+      
+      const totalSpan = summary.querySelector('.sum-total');
+      if (totalLimit !== null) {
+        totalSpan.textContent = `${total}/${totalLimit}`;
+        if (total > totalLimit) {
+          totalSpan.style.color = '#ef4444';
+          totalSpan.style.fontWeight = 'bold';
+        } else {
+          totalSpan.style.color = '#60a5fa';
+          totalSpan.style.fontWeight = 'normal';
+        }
+      } else {
+        totalSpan.textContent = total;
+        totalSpan.style.color = '#60a5fa';
+        totalSpan.style.fontWeight = 'normal';
+      }
+      
+      const updateBlockSpan = (selector, count, limit) => {
+        const span = summary.querySelector(selector);
+        if (limit !== null) {
+          span.textContent = `${count}/${limit}`;
+          if (count > limit) {
+            span.style.color = '#ef4444';
+            span.style.fontWeight = 'bold';
+          } else {
+            span.style.color = '';
+            span.style.fontWeight = 'normal';
+          }
+        } else {
+          span.textContent = count;
+          span.style.color = '';
+          span.style.fontWeight = 'normal';
+        }
+      };
+      
+      updateBlockSpan('.sum-stage-ind', stageInd, stageIndLimit);
+      updateBlockSpan('.sum-stage-grp', stageGrp, stageGrpLimit);
+      updateBlockSpan('.sum-nonstage-ind', nonStageInd, nonStageIndLimit);
+      updateBlockSpan('.sum-nonstage-grp', nonStageGrp, nonStageGrpLimit);
+    });
+
+    // Check if any limit is exceeded to disable the save buttons
+    const anyExceeded = document.querySelectorAll('.limit-exceeded').length > 0;
+    const saveButtons = document.querySelectorAll('button[type="submit"]');
+    saveButtons.forEach(btn => {
+      if (anyExceeded) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+        btn.title = 'Some constraints or limits are exceeded!';
+      } else {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.title = '';
+      }
+    });
+  }
+
+  // Run on page load
+  document.addEventListener('DOMContentLoaded', updateProgramLimits);
+
+  // Dynamic sync between checkboxes of normal and transposed tables
+  document.addEventListener('change', function (e) {
+    if (e.target.type === 'checkbox' && e.target.name.startsWith('assign_')) {
+      const checked = e.target.checked;
+      const checkboxes = document.querySelectorAll(`input[name="${e.target.name}"]`);
+      checkboxes.forEach(cb => {
+        cb.checked = checked;
+      });
+      // Recalculate limits
+      updateProgramLimits();
+    }
+  });
+
+  // Toggle layout between normal and transposed representation
+  function toggleTranspose(btn) {
+    const card = btn.closest('.grid-card');
+    const normalContainer = card.querySelector('.normal-table-container');
+    const transposedContainer = card.querySelector('.transposed-table-container');
+
+    if (normalContainer.style.display === 'none') {
+      normalContainer.style.display = 'block';
+      transposedContainer.style.display = 'none';
+      btn.innerHTML = '🔄 Swap Axes';
+    } else {
+      normalContainer.style.display = 'none';
+      transposedContainer.style.display = 'block';
+      btn.innerHTML = '🔄 Reset Axes';
+    }
+    // Update count display after swap to be safe
+    updateProgramLimits();
+  }
+
+  // Toggle rotating of the headers vertically
+  function toggleHeaderRotation(btn) {
+    const card = btn.closest('.grid-card');
+    card.classList.toggle('rotate-headers');
+    if (card.classList.contains('rotate-headers')) {
+      btn.innerHTML = '📐 Horizontal Headers';
+    } else {
+      btn.innerHTML = '📐 Rotate Headers';
+    }
+  }
+</script>
 {% endblock %}

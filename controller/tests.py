@@ -1,7 +1,8 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
-from controller.models import AdminSetting, Program, Student, ProgramParticipant
+from django.core.exceptions import ValidationError
+from controller.models import FestConfiguration, SystemSetting, Program, Student, ProgramParticipant, ParticipationRule, LiveAuctionState, BidLog
 
 class AdminSettingCRUDTests(TestCase):
     def setUp(self):
@@ -30,7 +31,7 @@ class AdminSettingCRUDTests(TestCase):
         response = self.client.post(reverse('dashboard'), data=post_data)
         self.assertRedirects(response, reverse('dashboard'))
         
-        setting = AdminSetting.objects.first()
+        setting = FestConfiguration.objects.first()
         self.assertEqual(setting.min_bid_amount, 1500)
         self.assertEqual(setting.bid_confirmation_duration, 25)
 
@@ -43,13 +44,12 @@ class AdminSettingCRUDTests(TestCase):
         self.assertRedirects(response, reverse('dashboard'))
         
         # Verify DB entry
-        setting = AdminSetting.objects.get(section='test_sec_value')
-        self.assertIsNone(setting.key)
-        self.assertEqual(setting.section, 'test_sec_value')
+        setting = SystemSetting.objects.get(setting_type='OTHER', key='section', value='test_sec_value')
+        self.assertEqual(setting.value, 'test_sec_value')
 
     def test_edit_setting(self):
         # Create setting first
-        setting = AdminSetting.objects.create(section='old_sec')
+        setting = SystemSetting.objects.create(setting_type='OTHER', key='section', value='old_sec')
         post_data = {
             'setting_type_field': 'section',
             'section': 'new_sec'
@@ -59,20 +59,63 @@ class AdminSettingCRUDTests(TestCase):
         
         # Verify updated entry
         setting.refresh_from_db()
-        self.assertEqual(setting.section, 'new_sec')
-        self.assertIsNone(setting.key)
+        self.assertEqual(setting.value, 'new_sec')
 
     def test_delete_setting(self):
         # Ensure pk=1 exists so the test setting doesn't get pk=1 and get recreated on redirect to dashboard
-        AdminSetting.objects.get_or_create(pk=1)
-        setting = AdminSetting.objects.create(section='to_delete')
+        FestConfiguration.objects.get_or_create(pk=1)
+        setting = SystemSetting.objects.create(setting_type='OTHER', key='section', value='to_delete')
         
         response = self.client.post(reverse('delete_setting', args=[setting.id]))
         self.assertRedirects(response, reverse('dashboard'))
         
         # Verify setting is deleted
-        with self.assertRaises(AdminSetting.DoesNotExist):
-            AdminSetting.objects.get(id=setting.id)
+        with self.assertRaises(SystemSetting.DoesNotExist):
+            SystemSetting.objects.get(id=setting.id)
+
+    def test_add_fest_name_and_house_setting(self):
+        # 1. Test Fest Name
+        post_data_fest = {
+            'setting_type_field': 'fest_name',
+            'fest_name': 'My Fest 2026'
+        }
+        response = self.client.post(reverse('add_setting'), data=post_data_fest)
+        self.assertRedirects(response, reverse('dashboard'))
+        setting_fest = SystemSetting.objects.get(setting_type='FEST_NAME')
+        self.assertEqual(setting_fest.value, 'My Fest 2026')
+
+        # 2. Test House
+        post_data_house = {
+            'setting_type_field': 'house',
+            'house': 'Gryffindor'
+        }
+        response = self.client.post(reverse('add_setting'), data=post_data_house)
+        self.assertRedirects(response, reverse('dashboard'))
+        setting_house = SystemSetting.objects.get(setting_type='HOUSE')
+        self.assertEqual(setting_house.value, 'Gryffindor')
+
+    def test_edit_fest_name_and_house_setting(self):
+        # 1. Test Fest Name
+        setting_fest = SystemSetting.objects.create(setting_type='FEST_NAME', key='fest_name', value='Old Fest')
+        post_data_fest = {
+            'setting_type_field': 'fest_name',
+            'fest_name': 'New Fest'
+        }
+        response = self.client.post(reverse('edit_setting', args=[setting_fest.id]), data=post_data_fest)
+        self.assertRedirects(response, reverse('dashboard'))
+        setting_fest.refresh_from_db()
+        self.assertEqual(setting_fest.value, 'New Fest')
+
+        # 2. Test House
+        setting_house = SystemSetting.objects.create(setting_type='HOUSE', key='house', value='Slytherin')
+        post_data_house = {
+            'setting_type_field': 'house',
+            'house': 'Hufflepuff'
+        }
+        response = self.client.post(reverse('edit_setting', args=[setting_house.id]), data=post_data_house)
+        self.assertRedirects(response, reverse('dashboard'))
+        setting_house.refresh_from_db()
+        self.assertEqual(setting_house.value, 'Hufflepuff')
 
 
 class UserManagementTests(TestCase):
@@ -137,6 +180,9 @@ class ProgramCRUDTests(TestCase):
         self.admin_user = User.objects.create_user(username='mishu_admin', password='password123', is_staff=True)
         self.admin_group, _ = Group.objects.get_or_create(name='Admin')
         self.admin_user.groups.add(self.admin_group)
+        
+        SystemSetting.objects.create(setting_type='MODE', key='mode', value='Offline')
+        SystemSetting.objects.create(setting_type='MODE', key='mode', value='Online')
         
         self.client = Client()
         self.client.login(username='mishu_admin', password='password123')
@@ -204,6 +250,35 @@ class ProgramCRUDTests(TestCase):
         
         with self.assertRaises(Program.DoesNotExist):
             Program.objects.get(id=prog.id)
+
+    def test_export_programs_template(self):
+        response = self.client.get(reverse('export_programs_template'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_import_programs(self):
+        import io
+        import tablib
+        headers = [
+            'code', 'name', 'mode', 'category',
+            'section', 'type', 'skill', 'program_duration',
+            'event_duration', 'count', 'mlm_count', 'urd_count',
+            'group_count', 'is_quiz', 'date'
+        ]
+        data = [
+            ('P200', 'Imported Program', 'Offline', 'Cat A', 'Sec A', 'Type A', 'Skill A', '60', '60', '1', 1, 1, 1, False, '2026-07-20')
+        ]
+        dataset = tablib.Dataset(*data, headers=headers)
+        excel_file = io.BytesIO(dataset.export('xlsx'))
+        excel_file.name = 'programs.xlsx'
+
+        response = self.client.post(reverse('import_programs'), {'excel_file': excel_file})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+
+        prog = Program.objects.get(code='P200')
+        self.assertEqual(prog.name, 'Imported Program')
+        self.assertEqual(prog.date.strftime('%Y-%m-%d'), '2026-07-20')
 
 
 class StudentCRUDTests(TestCase):
@@ -281,6 +356,13 @@ class StudentCRUDTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+    def test_export_students_excel(self):
+        Student.objects.create(adno='S009', name='Export Test', grade='G1', house='House Test')
+        response = self.client.get(reverse('export_students_excel'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        self.assertIn('attachment; filename=students.xlsx', response['Content-Disposition'])
+
 
 class AuctionTests(TestCase):
     def setUp(self):
@@ -290,7 +372,7 @@ class AuctionTests(TestCase):
         self.leader_user.groups.add(self.leader_group)
         
         # Create setting
-        self.setting, _ = AdminSetting.objects.get_or_create(pk=1)
+        self.setting, _ = FestConfiguration.objects.get_or_create(pk=1)
         self.setting.auction_active = True
         self.setting.save()
         
@@ -388,10 +470,17 @@ class AuctionTests(TestCase):
         self.assertTrue(response.json()['success'])
 
         # Verify active auction state is set
-        self.setting.refresh_from_db()
-        self.assertEqual(self.setting.active_bid_student_id, alice.id)
-        self.assertEqual(self.setting.active_bid_amount, 150)
-        self.assertEqual(self.setting.active_bid_leader_id, self.leader_user.id)
+        state = LiveAuctionState.objects.filter(is_active=True).first()
+        self.assertIsNotNone(state)
+        self.assertEqual(state.student, alice)
+        self.assertEqual(state.current_highest_amount, 150)
+        self.assertEqual(state.current_highest_bidder, self.leader_user)
+
+        # Verify bid log was created
+        log = BidLog.objects.filter(student=alice).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.amount, 150)
+        self.assertEqual(log.leader, self.leader_user)
 
         # Verify student not assigned yet
         alice.refresh_from_db()
@@ -402,8 +491,8 @@ class AuctionTests(TestCase):
         self.assertEqual(leader_student.amount, 1000)
 
         # Fast forward time to expire active bid
-        self.setting.active_bid_expires = timezone.now() - timedelta(seconds=1)
-        self.setting.save()
+        state.expires_at = timezone.now() - timedelta(seconds=1)
+        state.save()
 
         # Poll the page to trigger check_active_bid_status
         self.client.get(reverse('unassigned_students_partial'))
@@ -416,8 +505,8 @@ class AuctionTests(TestCase):
         leader_student.refresh_from_db()
         self.assertEqual(leader_student.amount, 850)
 
-        self.setting.refresh_from_db()
-        self.assertIsNone(self.setting.active_bid_student_id)
+        state.refresh_from_db()
+        self.assertFalse(state.is_active)
 
     def test_assign_student_with_bidding_mode_off(self):
         # Disable bidding_mode
@@ -500,11 +589,12 @@ class AuctionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()['success'])
 
-        self.setting.refresh_from_db()
-        self.assertEqual(self.setting.active_bid_amount, 250)
+        state = LiveAuctionState.objects.filter(is_active=True).first()
+        self.assertIsNotNone(state)
+        self.assertEqual(state.current_highest_amount, 250)
         
-        # Verify active_bid_expires is roughly now + 45 seconds
-        expires = self.setting.active_bid_expires
+        # Verify expires_at is roughly now + 45 seconds
+        expires = state.expires_at
         expected_expires = timezone.now() + timedelta(seconds=45)
         self.assertAlmostEqual((expires - expected_expires).total_seconds(), 0, delta=2)
 
@@ -544,9 +634,7 @@ class AuctionTests(TestCase):
         leader_student.save()
 
         # Clear active auction state
-        self.setting.active_bid_student_id = None
-        self.setting.active_bid_amount = None
-        self.setting.save()
+        LiveAuctionState.objects.all().delete()
 
         # 2. Second bid (assigned_count = 1)
         # Bidding 1500: remaining is 500, but required reserve is 1 * 1000 = 1000. Should fail.
@@ -777,12 +865,356 @@ class AuctionTests(TestCase):
         # Verify NO ProgramParticipant entry is created
         self.assertFalse(ProgramParticipant.objects.filter(participant=student, program=program).exists())
 
+    def test_assign_students_all_category_program(self):
+        # Create a staff user
+        admin_user = User.objects.create_user(username='admin_test_all', password='password123', is_staff=True)
+        self.client.login(username='admin_test_all', password='password123')
 
+        # Create two students with different categories
+        student_junior = Student.objects.create(
+            name="Junior Student",
+            adno="JS1",
+            category="JUNIOR",
+            house="leader_user"
+        )
+        student_senior = Student.objects.create(
+            name="Senior Student",
+            adno="SS1",
+            category="SENIOR",
+            house="leader_user"
+        )
 
+        # Create a program with category "All"
+        program_all = Program.objects.create(
+            code="PALL",
+            name="All Category Program",
+            category="All",
+            max_participants=5
+        )
 
+        # Get grid page for this house
+        response = self.client.get(reverse('assign_students') + "?house=leader_user")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Category: All")
+        self.assertContains(response, "Junior Student")
+        self.assertContains(response, "Senior Student")
+        self.assertContains(response, "All Category Program")
 
+        # Submit checkbox assignments for both students to the "All" category program
+        post_data = {
+            f"assign_{student_junior.id}_{program_all.id}": "on",
+            f"assign_{student_senior.id}_{program_all.id}": "on"
+        }
+        response = self.client.post(reverse('assign_students') + "?house=leader_user", data=post_data)
+        self.assertEqual(response.status_code, 302)
 
+        # Verify entries created in db
+        self.assertTrue(ProgramParticipant.objects.filter(participant=student_junior, program=program_all).exists())
+        self.assertTrue(ProgramParticipant.objects.filter(participant=student_senior, program=program_all).exists())
 
+class ParticipationRuleTests(TestCase):
+    def setUp(self):
+        self.student = Student.objects.create(
+            name="Rule Test Student",
+            adno="RT1",
+            category="ULA"
+        )
+        self.program_stage_single = Program.objects.create(
+            code="PST1",
+            name="Stage Single Program",
+            type="individual",
+            mode="stage",
+            category="ULA"
+        )
+        self.program_stage_group = Program.objects.create(
+            code="PST2",
+            name="Stage Group Program",
+            type="group",
+            mode="stage",
+            category="ULA"
+        )
+        self.program_off_stage = Program.objects.create(
+            code="PST3",
+            name="Off Stage Program",
+            type="individual",
+            mode="off-stage",
+            category="ULA"
+        )
 
+    def test_participation_rule_max_limit_enforced(self):
+        # Create a rule: Max 1 stage-mode program
+        rule = ParticipationRule.objects.create(
+            category="ULA",
+            program_mode="stage",
+            max_count=1
+        )
 
+        # First stage program assignment should succeed
+        pp1 = ProgramParticipant.objects.create(
+            participant=self.student,
+            program=self.program_stage_single
+        )
 
+        # Second stage program assignment should fail
+        with self.assertRaises(ValidationError):
+            ProgramParticipant.objects.create(
+                participant=self.student,
+                program=self.program_stage_group
+            )
+
+        # Off-stage program assignment should succeed as it is off-stage
+        pp2 = ProgramParticipant.objects.create(
+            participant=self.student,
+            program=self.program_off_stage
+        )
+
+    def test_audit_minimum_requirements_action(self):
+        from django.contrib.admin.sites import AdminSite
+        from controller.admin import students
+        
+        # Create a rule: Min 2 stage-mode programs
+        rule = ParticipationRule.objects.create(
+            category="ULA",
+            program_mode="stage",
+            min_count=2,
+            max_count=5
+        )
+
+        # Instantiate admin class and test action
+        site = AdminSite()
+        student_admin = students(Student, site)
+        
+        # Scenario 1: Student has 0 stage programs (unmet)
+        # Create a mock request
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        request = factory.get('/')
+        
+        # Mock request._messages to be a dummy storage to bypass session middleware issues
+        class DummyMessageStorage:
+            def add(self, level, message, extra_tags=''):
+                pass
+        setattr(request, '_messages', DummyMessageStorage())
+        
+        # Call action on a queryset containing self.student
+        queryset = Student.objects.filter(pk=self.student.pk)
+        
+        # We can mock message_user or let it run. Let's patch/mock message_user to inspect the result
+        from unittest.mock import MagicMock
+        student_admin.message_user = MagicMock()
+        
+        student_admin.audit_minimum_requirements(request, queryset)
+        
+        # Check that message_user was called and reported unmet requirement
+        student_admin.message_user.assert_called_once()
+        args, kwargs = student_admin.message_user.call_args
+        self.assertIn("did not meet their minimum requirements", args[1])
+        self.assertIn("needs 2", args[1])
+
+        # Scenario 2: Student has 2 stage programs assigned (met)
+        ProgramParticipant.objects.create(
+            participant=self.student,
+            program=self.program_stage_single
+        )
+        ProgramParticipant.objects.create(
+            participant=self.student,
+            program=self.program_stage_group
+        )
+        
+        student_admin.message_user.reset_mock()
+        student_admin.audit_minimum_requirements(request, queryset)
+        args, kwargs = student_admin.message_user.call_args
+        self.assertIn("met their minimum requirements", args[1])
+
+    def test_rule_crud_views(self):
+        # Create an admin user for request authentication
+        admin_user = User.objects.create_user(username='rule_admin_crud', password='password123', is_staff=True)
+        # Create Admin group and assign user to it (required by is_admin user_passes_test decorator)
+        from django.contrib.auth.models import Group
+        admin_group, _ = Group.objects.get_or_create(name='Admin')
+        admin_user.groups.add(admin_group)
+        self.client.login(username='rule_admin_crud', password='password123')
+
+        # 1. Test add_rule POST view
+        response = self.client.post(reverse('add_rule'), data={
+            'category': 'ULA',
+            'program_type': 'individual',
+            'program_mode': 'stage',
+            'language': 'Malayalam',
+            'is_multilingual': 'true',
+            'skill': 'Speech',
+            'role': 'Lead',
+            'min_count': '1',
+            'max_count': '3'
+        })
+        self.assertEqual(response.status_code, 302)
+        
+        # Verify rule is created in database
+        rule = ParticipationRule.objects.filter(category='ULA', program_type='individual').first()
+        self.assertIsNotNone(rule)
+        self.assertEqual(rule.min_count, 1)
+        self.assertEqual(rule.max_count, 3)
+        self.assertEqual(rule.language, 'Malayalam')
+        self.assertTrue(rule.is_multilingual)
+        self.assertEqual(rule.skill, 'Speech')
+        self.assertEqual(rule.role, 'Lead')
+
+        # 2. Test edit_rule POST view
+        response = self.client.post(reverse('edit_rule', args=[rule.id]), data={
+            'category': 'ULA',
+            'program_type': 'individual',
+            'program_mode': 'off-stage',
+            'language': 'English',
+            'is_multilingual': 'false',
+            'skill': 'Elocution',
+            'role': 'Accompanist',
+            'min_count': '2',
+            'max_count': '4'
+        })
+        self.assertEqual(response.status_code, 302)
+        
+        rule.refresh_from_db()
+        self.assertEqual(rule.program_mode, 'off-stage')
+        self.assertEqual(rule.min_count, 2)
+        self.assertEqual(rule.max_count, 4)
+        self.assertEqual(rule.language, 'English')
+        self.assertFalse(rule.is_multilingual)
+        self.assertEqual(rule.skill, 'Elocution')
+        self.assertEqual(rule.role, 'Accompanist')
+
+        # 3. Test delete_rule view
+        response = self.client.post(reverse('delete_rule', args=[rule.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(ParticipationRule.objects.filter(id=rule.id).exists())
+
+    def test_expanded_rules_and_validations(self):
+        # Create a student
+        student = Student.objects.create(
+            name="Expanded Rule Student",
+            adno="ER1",
+            category="ULA",
+            house="Gryffindor"
+        )
+        
+        # 1. Test Expanded Rule matching (with language, is_multilingual, skill, and role)
+        rule = ParticipationRule.objects.create(
+            category="ULA",
+            language="English",
+            is_multilingual=True,
+            skill="Elocution",
+            role="Lead",
+            max_count=1
+        )
+        
+        # Create a program matching these criteria
+        program_matching = Program.objects.create(
+            code="PEXP1",
+            name="Multilingual English Elocution",
+            language="English",
+            is_multilingual=True,
+            skill="Elocution",
+            category="ULA"
+        )
+        
+        # Create another program matching these criteria
+        program_matching_2 = Program.objects.create(
+            code="PEXP2",
+            name="Another English Elocution",
+            language="English",
+            is_multilingual=True,
+            skill="Elocution",
+            category="ULA"
+        )
+        
+        # First assignment as "Lead" should succeed
+        pp1 = ProgramParticipant.objects.create(
+            participant=student,
+            program=program_matching,
+            role="Lead"
+        )
+        
+        # Second assignment as "Lead" should fail because max_count=1
+        with self.assertRaises(ValidationError):
+            ProgramParticipant.objects.create(
+                participant=student,
+                program=program_matching_2,
+                role="Lead"
+            )
+            
+        # Assignment as "Accompanist" to second program should succeed since role is different
+        pp2 = ProgramParticipant.objects.create(
+            participant=student,
+            program=program_matching_2,
+            role="Accompanist"
+        )
+        
+        # 2. Test House Quota check
+        program_quota = Program.objects.create(
+            code="PQ1",
+            name="Quota Program",
+            max_entries_per_house=1
+        )
+        # Create another student in same house
+        student_housemate = Student.objects.create(
+            name="Housemate Student",
+            adno="HM1",
+            category="ULA",
+            house="Gryffindor"
+        )
+        # Assign first student to program_quota
+        ProgramParticipant.objects.create(
+            participant=student,
+            program=program_quota
+        )
+        # Assign housemate to program_quota should fail
+        with self.assertRaises(ValidationError):
+            ProgramParticipant.objects.create(
+                participant=student_housemate,
+                program=program_quota
+            )
+            
+        # 3. Test Time/Schedule Clash check
+        from datetime import date, time
+        prog_time_1 = Program.objects.create(
+            code="PT1",
+            name="Time Program 1",
+            date=date(2026, 7, 20),
+            start_time=time(10, 0),
+            end_time=time(11, 30)
+        )
+        prog_time_2 = Program.objects.create(
+            code="PT2",
+            name="Time Program 2",
+            date=date(2026, 7, 20),
+            start_time=time(11, 0), # overlaps
+            end_time=time(12, 0)
+        )
+        # Assign student to time program 1
+        ProgramParticipant.objects.create(
+            participant=student,
+            program=prog_time_1
+        )
+        # Assign student to overlapping time program 2 should fail
+        with self.assertRaises(ValidationError):
+            ProgramParticipant.objects.create(
+                participant=student,
+                program=prog_time_2
+            )
+            
+        # 4. Test Program Capacity check
+        prog_cap = Program.objects.create(
+            code="PC1",
+            name="Capacity Program",
+            max_entries_per_house=1
+        )
+        # Assign student to prog_cap
+        ProgramParticipant.objects.create(
+            participant=student,
+            program=prog_cap
+        )
+        # Assign housemate should fail because max_entries_per_house=1
+        with self.assertRaises(ValidationError):
+            ProgramParticipant.objects.create(
+                participant=student_housemate,
+                program=prog_cap
+            )

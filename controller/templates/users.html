@@ -12,7 +12,7 @@
         </div>
         <form id="importForm" style="display: flex; gap: 12px; align-items: center; width: auto;" enctype="multipart/form-data" method="post">
             {% csrf_token %}
-            <input type="file" name="excel_file" accept=".xlsx" style="width: auto; margin: 0;" required>
+            <label class="custom-file-label"><span id="file-name-display-users">Upload Excel</span><input type="file" name="excel_file" accept=".xlsx" style="width: auto; margin: 0;" required></label>
             <button type="submit" style="width: auto; margin: 0;">Import Users</button>
         </form>
         <form action="{% url 'dummy_export_excel' %}" method="get" style="width: auto;">

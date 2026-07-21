@@ -42,7 +42,7 @@ class UserResource(resources.ModelResource):
             print(f"Group assignment error for user {row.get('username')}: {e}")
 
 
-from .models import Student
+from .models import Student, Program
 
 class StudentResource(resources.ModelResource):
     class Meta:
@@ -53,4 +53,16 @@ class StudentResource(resources.ModelResource):
             'adno', 'name', 'father', 'section',
             'locality', 'state', 'village', 'grade',
             'scode', 'house', 'category', 'point'
+        )
+
+class ProgramResource(resources.ModelResource):
+    class Meta:
+        model = Program
+        import_id_fields = ('code',)
+        skip_unchanged = True
+        fields = (
+            'code', 'name', 'mode', 'category',
+            'section', 'type', 'skill', 'program_duration',
+            'event_duration', 'count',
+            'group_count', 'is_quiz', 'date'
         )

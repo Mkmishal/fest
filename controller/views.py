@@ -14,7 +14,7 @@ from django.contrib import messages
 from .forms import AssignStudentForm, ProgramForm, StudentForm
 from django.db.models import Count,Q
 from openpyxl import Workbook
-from .resources import UserResource, StudentResource
+from .resources import UserResource, StudentResource, ProgramResource
 from django.urls import reverse
 from tablib import Dataset
 import tablib
@@ -70,15 +70,19 @@ def login(request):
 
 def dashboard(request):
     groups = request.user.groups.values_list('name', flat=True)
-    setting, _ = AdminSetting.objects.get_or_create(pk=1)  # ensures single record
+    setting, _ = FestConfiguration.objects.get_or_create(pk=1)  # ensures single record
     available_grades = Student.objects.values_list('grade', flat=True).distinct()
     
-    settings_sections = AdminSetting.objects.filter(section__isnull=False).exclude(section='').order_by('id')
-    settings_categories = AdminSetting.objects.filter(category__isnull=False).exclude(category='').order_by('id')
-    settings_types = AdminSetting.objects.filter(type__isnull=False).exclude(type='').order_by('id')
-    settings_skills = AdminSetting.objects.filter(skill__isnull=False).exclude(skill='').order_by('id')
-    settings_judging = AdminSetting.objects.filter(judging_conditions__isnull=False).exclude(judging_conditions='').order_by('id')
-    settings_keys = AdminSetting.objects.filter(key__isnull=False).exclude(key='').order_by('id')
+    settings_sections = SystemSetting.objects.filter(setting_type='OTHER', key='section').order_by('id')
+    settings_categories = SystemSetting.objects.filter(setting_type='CATEGORY').order_by('id')
+    settings_types = SystemSetting.objects.filter(setting_type='TYPE').order_by('id')
+    settings_skills = SystemSetting.objects.filter(setting_type='SKILL').order_by('id')
+    settings_judging = SystemSetting.objects.filter(setting_type='OTHER', key='judging_conditions').order_by('id')
+    settings_keys = SystemSetting.objects.filter(setting_type='OTHER').exclude(key__in=['section', 'judging_conditions']).order_by('id')
+    settings_fest_names = SystemSetting.objects.filter(setting_type='FEST_NAME').order_by('id')
+    settings_houses = SystemSetting.objects.filter(setting_type='HOUSE').order_by('id')
+    settings_modes = SystemSetting.objects.filter(setting_type='MODE').order_by('id')
+    rules = ParticipationRule.objects.all().order_by('id')
  
     if request.method == 'POST':
         if request.POST.get('toggle_bidding') == '1':
@@ -217,6 +221,10 @@ def dashboard(request):
         'settings_skills': settings_skills,
         'settings_judging': settings_judging,
         'settings_keys': settings_keys,
+        'settings_fest_names': settings_fest_names,
+        'settings_houses': settings_houses,
+        'settings_modes': settings_modes,
+        'rules': rules,
         'candidate_registration_active': setting.candidate_registration_active,
     }
     return render(request, 'dashboard.html',context)
@@ -230,22 +238,31 @@ def add_setting(request):
         if setting_type == 'key_value':
             key = request.POST.get('key')
             value = request.POST.get('value')
-            AdminSetting.objects.create(key=key, value=value)
+            SystemSetting.objects.create(setting_type='OTHER', key=key, value=value)
         elif setting_type == 'section':
             section = request.POST.get('section')
-            AdminSetting.objects.create(section=section)
+            SystemSetting.objects.create(setting_type='OTHER', key='section', value=section)
         elif setting_type == 'category':
             category = request.POST.get('category')
-            AdminSetting.objects.create(category=category)
+            SystemSetting.objects.create(setting_type='CATEGORY', key='category', value=category)
         elif setting_type == 'type':
             type_val = request.POST.get('type')
-            AdminSetting.objects.create(type=type_val)
+            SystemSetting.objects.create(setting_type='TYPE', key='type', value=type_val)
         elif setting_type == 'skill':
             skill = request.POST.get('skill')
-            AdminSetting.objects.create(skill=skill)
+            SystemSetting.objects.create(setting_type='SKILL', key='skill', value=skill)
         elif setting_type == 'judging_conditions':
             judging_conditions = request.POST.get('judging_conditions')
-            AdminSetting.objects.create(judging_conditions=judging_conditions)
+            SystemSetting.objects.create(setting_type='OTHER', key='judging_conditions', value=judging_conditions)
+        elif setting_type == 'fest_name':
+            fest_name = request.POST.get('fest_name')
+            SystemSetting.objects.create(setting_type='FEST_NAME', key='fest_name', value=fest_name)
+        elif setting_type == 'house':
+            house = request.POST.get('house')
+            SystemSetting.objects.create(setting_type='HOUSE', key='house', value=house)
+        elif setting_type == 'mode':
+            mode_val = request.POST.get('mode')
+            SystemSetting.objects.create(setting_type='MODE', key='mode', value=mode_val)
             
         messages.success(request, "Admin setting added successfully.")
     return redirect('dashboard')
@@ -253,32 +270,46 @@ def add_setting(request):
 
 @user_passes_test(is_admin)
 def edit_setting(request, setting_id):
-    setting = get_object_or_404(AdminSetting, id=setting_id)
+    setting = get_object_or_404(SystemSetting, id=setting_id)
     if request.method == 'POST':
         setting_type = request.POST.get('setting_type_field')
         
-        # Clear other setting fields to make sure it only has one field set
-        setting.key = None
-        setting.value = None
-        setting.section = None
-        setting.category = None
-        setting.type = None
-        setting.skill = None
-        setting.judging_conditions = None
-        
         if setting_type == 'key_value':
+            setting.setting_type = 'OTHER'
             setting.key = request.POST.get('key')
             setting.value = request.POST.get('value')
         elif setting_type == 'section':
-            setting.section = request.POST.get('section')
+            setting.setting_type = 'OTHER'
+            setting.key = 'section'
+            setting.value = request.POST.get('section')
         elif setting_type == 'category':
-            setting.category = request.POST.get('category')
+            setting.setting_type = 'CATEGORY'
+            setting.key = 'category'
+            setting.value = request.POST.get('category')
         elif setting_type == 'type':
-            setting.type = request.POST.get('type')
+            setting.setting_type = 'TYPE'
+            setting.key = 'type'
+            setting.value = request.POST.get('type')
         elif setting_type == 'skill':
-            setting.skill = request.POST.get('skill')
+            setting.setting_type = 'SKILL'
+            setting.key = 'skill'
+            setting.value = request.POST.get('skill')
         elif setting_type == 'judging_conditions':
-            setting.judging_conditions = request.POST.get('judging_conditions')
+            setting.setting_type = 'OTHER'
+            setting.key = 'judging_conditions'
+            setting.value = request.POST.get('judging_conditions')
+        elif setting_type == 'fest_name':
+            setting.setting_type = 'FEST_NAME'
+            setting.key = 'fest_name'
+            setting.value = request.POST.get('fest_name')
+        elif setting_type == 'house':
+            setting.setting_type = 'HOUSE'
+            setting.key = 'house'
+            setting.value = request.POST.get('house')
+        elif setting_type == 'mode':
+            setting.setting_type = 'MODE'
+            setting.key = 'mode'
+            setting.value = request.POST.get('mode')
             
         setting.save()
         messages.success(request, "Admin setting updated successfully.")
@@ -287,11 +318,129 @@ def edit_setting(request, setting_id):
 
 @user_passes_test(is_admin)
 def delete_setting(request, setting_id):
-    setting = get_object_or_404(AdminSetting, id=setting_id)
+    setting = get_object_or_404(SystemSetting, id=setting_id)
     setting.delete()
     messages.success(request, "Admin setting deleted successfully.")
     return redirect('dashboard')
 
+
+@user_passes_test(is_admin)
+def add_rule(request):
+    if request.method == 'POST':
+        category = request.POST.get('category')
+        program_type = request.POST.get('program_type') or None
+        program_mode = request.POST.get('program_mode') or None
+        language = request.POST.get('language') or None
+        
+        is_multilingual_raw = request.POST.get('is_multilingual')
+        if is_multilingual_raw == 'true':
+            is_multilingual = True
+        elif is_multilingual_raw == 'false':
+            is_multilingual = False
+        else:
+            is_multilingual = None
+            
+        skill = request.POST.get('skill') or None
+        role = request.POST.get('role') or None
+        min_count = int(request.POST.get('min_count') or 0)
+        max_count = int(request.POST.get('max_count'))
+        
+        ParticipationRule.objects.create(
+            category=category,
+            program_type=program_type,
+            program_mode=program_mode,
+            language=language,
+            is_multilingual=is_multilingual,
+            skill=skill,
+            role=role,
+            min_count=min_count,
+            max_count=max_count
+        )
+        messages.success(request, "Participation rule added successfully.")
+    return redirect('dashboard')
+
+
+@user_passes_test(is_admin)
+def edit_rule(request, rule_id):
+    rule = get_object_or_404(ParticipationRule, id=rule_id)
+    if request.method == 'POST':
+        rule.category = request.POST.get('category')
+        rule.program_type = request.POST.get('program_type') or None
+        rule.program_mode = request.POST.get('program_mode') or None
+        rule.language = request.POST.get('language') or None
+        
+        is_multilingual_raw = request.POST.get('is_multilingual')
+        if is_multilingual_raw == 'true':
+            rule.is_multilingual = True
+        elif is_multilingual_raw == 'false':
+            rule.is_multilingual = False
+        else:
+            rule.is_multilingual = None
+            
+        rule.skill = request.POST.get('skill') or None
+        rule.role = request.POST.get('role') or None
+        rule.min_count = int(request.POST.get('min_count') or 0)
+        rule.max_count = int(request.POST.get('max_count'))
+        rule.save()
+        messages.success(request, "Participation rule updated successfully.")
+    return redirect('dashboard')
+
+
+@user_passes_test(is_admin)
+def delete_rule(request, rule_id):
+    rule = get_object_or_404(ParticipationRule, id=rule_id)
+    rule.delete()
+    messages.success(request, "Participation rule deleted successfully.")
+    return redirect('dashboard')
+
+
+from django.db.models import Prefetch
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+# Make sure to import your models: Student, Program, ProgramParticipant
+
+@login_required
+def utilities(request):
+    groups = [g.name for g in request.user.groups.all()]
+    if not ('Admin' in groups or 'teacher' in groups or 'leader' in groups):
+        messages.error(request, "You do not have permission to access the Utilities page.")
+        return redirect('dashboard')
+
+    leader_house = None
+    if 'leader' in groups and 'Admin' not in groups and 'teacher' not in groups:
+        leader_student = Student.objects.filter(user=request.user).first()
+        if leader_student and leader_student.house:
+            leader_house = leader_student.house
+        else:
+            leader_house = request.user.username
+
+    if leader_house:
+        # 1. Create a filtered queryset of ONLY this house's participants
+        house_participants = ProgramParticipant.objects.filter(
+            participant__house=leader_house
+        ).select_related('participant')
+
+        students = Student.objects.filter(house=leader_house).prefetch_related('student_programs__program').order_by('name')
+        
+        # 2. Apply that filtered queryset using Prefetch
+        programs = Program.objects.filter(
+            program_participants__participant__house=leader_house
+        ).distinct().prefetch_related(
+            Prefetch('program_participants', queryset=house_participants)
+        ).order_by('name')
+    else:
+        # Admin / teacher sees everything
+        programs = Program.objects.all().prefetch_related('program_participants__participant').order_by('name')
+        students = Student.objects.all().prefetch_related('student_programs__program').order_by('name')
+
+    context = {
+        'groups': groups,
+        'programs': programs,
+        'students': students,
+        'leader_house': leader_house,
+    }
+    return render(request, 'utilities.html', context)
 
 
 @login_required 
@@ -342,9 +491,11 @@ def website(request):
 def program(request):
     programs = Program.objects.all()
     form = ProgramForm()
+    sections = SystemSetting.objects.filter(setting_type='OTHER', key='section').values_list('value', flat=True).distinct()
     variables = {
         'program': programs,
-        'form': form
+        'form': form,
+        'sections_list': sorted(list(sections))
     }
     return render(request, 'program.html', variables)
 
@@ -354,7 +505,21 @@ def add_program(request):
     if request.method == 'POST':
         form = ProgramForm(request.POST)
         if form.is_valid():
-            form.save()
+            program_obj = form.save()
+            # Save section counts
+            sections = SystemSetting.objects.filter(setting_type='OTHER', key='section').values_list('value', flat=True).distinct()
+            for sec in sections:
+                count_val = request.POST.get(f'section_count_{sec}')
+                if count_val is not None and count_val != '':
+                    try:
+                        val = int(count_val)
+                        ProgramSectionCount.objects.update_or_create(
+                            program=program_obj,
+                            section=sec,
+                            defaults={'count': val}
+                        )
+                    except ValueError:
+                        pass
             return JsonResponse({'success': True, 'message': 'Program added successfully.'})
         else:
             errors = form.errors.as_text()
@@ -369,6 +534,22 @@ def edit_program(request, program_id):
         form = ProgramForm(request.POST, instance=program_obj)
         if form.is_valid():
             form.save()
+            # Save section counts
+            sections = SystemSetting.objects.filter(setting_type='OTHER', key='section').values_list('value', flat=True).distinct()
+            for sec in sections:
+                count_val = request.POST.get(f'section_count_{sec}')
+                if count_val is not None and count_val != '':
+                    try:
+                        val = int(count_val)
+                        ProgramSectionCount.objects.update_or_create(
+                            program=program_obj,
+                            section=sec,
+                            defaults={'count': val}
+                        )
+                    except ValueError:
+                        pass
+                else:
+                    ProgramSectionCount.objects.filter(program=program_obj, section=sec).delete()
             messages.success(request, f'Program "{program_obj.name}" updated successfully.')
         else:
             messages.error(request, f'Error updating program: {form.errors.as_text()}')
@@ -557,7 +738,7 @@ def group(request):
 @user_passes_test(is_leader)
 def auction(request):
     try:
-        setting = AdminSetting.objects.first()
+        setting = FestConfiguration.objects.first()
         selected_grade = setting.selected_grade
         bidding_mode = setting.bidding_mode
         auction_active = setting.auction_active
@@ -680,21 +861,69 @@ def export_students_template(request):
     return response
 
 
+@user_passes_test(is_admin)
+def import_programs(request):
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        file = request.FILES['excel_file']
+        if not file.name.endswith('.xlsx'):
+            return JsonResponse({'success': False, 'message': 'Only .xlsx files supported'})
+
+        try:
+            dataset = XLSX().create_dataset(file.read())
+            resource = ProgramResource()
+
+            result = resource.import_data(dataset, dry_run=True, format=XLSX())
+            if result.has_errors():
+                errors_list = []
+                for row_result in result.rows:
+                    for err in row_result.errors:
+                        errors_list.append(str(err.error))
+                error_msg = "; ".join(errors_list) if errors_list else "Validation error in excel data."
+                return JsonResponse({'success': False, 'message': f'Import failed: {error_msg}'})
+
+            resource.import_data(dataset, dry_run=False, format=XLSX())
+            return JsonResponse({'success': True, 'message': f'{len(dataset)} programs imported successfully.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error importing file: {str(e)}'})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+
+@user_passes_test(is_admin)
+def export_programs_template(request):
+    headers = [
+        'code', 'name', 'mode', 'category',
+        'section', 'type', 'skill', 'program_duration',
+        'event_duration', 'count',
+        'group_count', 'is_quiz', 'date'
+    ]
+
+    dataset = tablib.Dataset(headers=headers)
+
+    response = HttpResponse(
+        dataset.export('xlsx'),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="program_import_template.xlsx"'
+    return response
+
+
 from datetime import timedelta
 
 def check_active_bid_status(setting=None):
     if setting is None:
-        setting = AdminSetting.objects.first()
+        setting = FestConfiguration.objects.first()
     if not setting:
         return None
     
-    if setting.active_bid_student_id:
-        if setting.active_bid_expires and timezone.now() >= setting.active_bid_expires:
-            # Bid expired! Assign the student to the winner
+    # Process any expired live auction states
+    now = timezone.now()
+    expired_states = LiveAuctionState.objects.filter(is_active=True, expires_at__isnull=False, expires_at__lte=now)
+    for state in expired_states:
+        student = state.student
+        winner = state.current_highest_bidder
+        if winner:
             try:
-                student = Student.objects.get(id=setting.active_bid_student_id)
-                winner = User.objects.get(id=setting.active_bid_leader_id)
-                
                 # Get the winner's house name
                 house_name = winner.username
                 student_profile = Student.objects.filter(user=winner).first()
@@ -704,24 +933,21 @@ def check_active_bid_status(setting=None):
                 student.house = house_name
                 student.assigned_by = winner
                 student.assigned_at = timezone.now()
-                student.amount = setting.active_bid_amount
+                student.amount = state.current_highest_amount
                 student.save()
                 
                 # Deduct winning leader's budget
                 leader_student = Student.objects.filter(user=winner).first()
                 if leader_student and leader_student.amount is not None:
-                    leader_student.amount -= setting.active_bid_amount
+                    leader_student.amount -= state.current_highest_amount
                     leader_student.save()
             except Exception as e:
                 print("Error finalizing active bid:", e)
-            
-            # Clear active bid state
-            setting.active_bid_student_id = None
-            setting.active_bid_amount = None
-            setting.active_bid_leader_id = None
-            setting.active_bid_expires = None
-            setting.save()
-            
+        
+        # Mark inactive
+        state.is_active = False
+        state.save()
+        
     return setting
 
 @user_passes_test(is_leader)
@@ -732,9 +958,9 @@ def assign_student(request):
             s = Student.objects.get(id=student_id)
             
             try:
-                setting = AdminSetting.objects.first()
+                setting = FestConfiguration.objects.first()
                 setting = check_active_bid_status(setting)
-                bidding_mode = setting.bidding_mode
+                bidding_mode = setting.bidding_mode if setting else False
                 auction_active = setting.auction_active if setting else False
             except Exception as e:
                 print("Error fetching setting:", e)
@@ -777,22 +1003,22 @@ def assign_student(request):
                         'error': f'Bid rejected! You must keep a reserve of at least {required_reserve} rs for subsequent drafts (Remaining: {leader_budget - bid_val} rs, Required reserve: {required_reserve} rs).'
                     })
 
-                if setting.active_bid_student_id:
+                # Find if there is any active live auction state
+                active_state = LiveAuctionState.objects.filter(is_active=True).first()
+                if active_state:
                     # An active auction is running
-                    if setting.active_bid_student_id != s.id:
-                        other_student = Student.objects.filter(id=setting.active_bid_student_id).first()
-                        other_name = other_student.name if other_student else "another student"
-                        return JsonResponse({'success': False, 'error': f'Bidding is currently in progress for {other_name}.'})
+                    if active_state.student != s:
+                        return JsonResponse({'success': False, 'error': f'Bidding is currently in progress for {active_state.student.name}.'})
                     
                     # Same student - must be higher bid
-                    if bid_val <= setting.active_bid_amount:
-                        return JsonResponse({'success': False, 'error': f'Bid must be higher than the current bid of {setting.active_bid_amount} rs.'})
+                    if bid_val <= active_state.current_highest_amount:
+                        return JsonResponse({'success': False, 'error': f'Bid must be higher than the current bid of {active_state.current_highest_amount} rs.'})
                     
                     # Update active bid
-                    setting.active_bid_amount = bid_val
-                    setting.active_bid_leader_id = request.user.id
-                    setting.active_bid_expires = timezone.now() + timedelta(seconds=setting.bid_confirmation_duration)
-                    setting.save()
+                    active_state.current_highest_amount = bid_val
+                    active_state.current_highest_bidder = request.user
+                    active_state.expires_at = timezone.now() + timedelta(seconds=setting.bid_confirmation_duration)
+                    active_state.save()
                 else:
                     # Start a new active auction
                     if s.house:
@@ -801,11 +1027,19 @@ def assign_student(request):
                     if bid_val < setting.min_bid_amount:
                         return JsonResponse({'success': False, 'error': f'Bid must be at least the minimum bid of {setting.min_bid_amount} rs.'})
 
-                    setting.active_bid_student_id = s.id
-                    setting.active_bid_amount = bid_val
-                    setting.active_bid_leader_id = request.user.id
-                    setting.active_bid_expires = timezone.now() + timedelta(seconds=setting.bid_confirmation_duration)
-                    setting.save()
+                    active_state, _ = LiveAuctionState.objects.get_or_create(student=s)
+                    active_state.current_highest_amount = bid_val
+                    active_state.current_highest_bidder = request.user
+                    active_state.expires_at = timezone.now() + timedelta(seconds=setting.bid_confirmation_duration)
+                    active_state.is_active = True
+                    active_state.save()
+
+                # Always create a BidLog entry upon every successful bid
+                BidLog.objects.create(
+                    student=s,
+                    leader=request.user,
+                    amount=bid_val
+                )
 
                 return JsonResponse({'success': True})
             
@@ -851,7 +1085,7 @@ def assign_student(request):
 
 def get_unassigned_students(request):
     try:
-        setting = AdminSetting.objects.first()
+        setting = FestConfiguration.objects.first()
         setting = check_active_bid_status(setting)
         selected_grade = setting.selected_grade
         bidding_mode = setting.bidding_mode
@@ -912,35 +1146,34 @@ def get_unassigned_students(request):
         leader_amount = 0
     response['X-Leader-Amount'] = str(leader_amount)
 
-    if auction_active and bidding_mode and setting and setting.active_bid_student_id:
-        active_student = Student.objects.filter(id=setting.active_bid_student_id).first()
-        if active_student:
-            response['X-Active-Bid-Student-Id'] = str(setting.active_bid_student_id)
-            response['X-Active-Bid-Student-Name'] = active_student.name
-            response['X-Active-Bid-Amount'] = str(setting.active_bid_amount)
-            response['X-Active-Bid-Leader-Id'] = str(setting.active_bid_leader_id)
+    active_state = LiveAuctionState.objects.filter(is_active=True).first()
+    if auction_active and bidding_mode and active_state:
+        response['X-Active-Bid-Student-Id'] = str(active_state.student.id)
+        response['X-Active-Bid-Student-Name'] = active_state.student.name
+        response['X-Active-Bid-Amount'] = str(active_state.current_highest_amount)
+        response['X-Active-Bid-Leader-Id'] = str(active_state.current_highest_bidder.id if active_state.current_highest_bidder else '')
+        
+        if active_state.expires_at:
+            delta = active_state.expires_at - timezone.now()
+            time_left = max(0, delta.total_seconds())
+            response['X-Active-Bid-Time-Left'] = f"{time_left:.1f}"
+        else:
+            response['X-Active-Bid-Time-Left'] = "0"
             
-            if setting.active_bid_expires:
-                delta = setting.active_bid_expires - timezone.now()
-                time_left = max(0, delta.total_seconds())
-                response['X-Active-Bid-Time-Left'] = f"{time_left:.1f}"
-            else:
-                response['X-Active-Bid-Time-Left'] = "0"
-                
-            winner_user = User.objects.filter(id=setting.active_bid_leader_id).first()
-            winner_house = "Unknown"
-            if winner_user:
-                winner_house = winner_user.username
-                winner_profile = Student.objects.filter(user=winner_user).first()
-                if winner_profile and winner_profile.house:
-                    winner_house = winner_profile.house
-            response['X-Active-Bid-Winner-House'] = winner_house
+        winner_user = active_state.current_highest_bidder
+        winner_house = "Unknown"
+        if winner_user:
+            winner_house = winner_user.username
+            winner_profile = Student.objects.filter(user=winner_user).first()
+            if winner_profile and winner_profile.house:
+                winner_house = winner_profile.house
+        response['X-Active-Bid-Winner-House'] = winner_house
 
     return response
 
 def grouped_students_partial(request):
     try:
-        setting = AdminSetting.objects.first()
+        setting = FestConfiguration.objects.first()
         setting = check_active_bid_status(setting)
         bidding_mode = setting.bidding_mode
         auction_active = setting.auction_active
@@ -970,36 +1203,35 @@ def grouped_students_partial(request):
     response['X-Auction-Active'] = 'true' if auction_active else 'false'
     response['X-Bid-Confirmation-Duration'] = str(bid_confirmation_duration)
 
-    if auction_active and bidding_mode and setting and setting.active_bid_student_id:
-        active_student = Student.objects.filter(id=setting.active_bid_student_id).first()
-        if active_student:
-            response['X-Active-Bid-Student-Id'] = str(setting.active_bid_student_id)
-            response['X-Active-Bid-Student-Name'] = active_student.name
-            response['X-Active-Bid-Amount'] = str(setting.active_bid_amount)
-            response['X-Active-Bid-Leader-Id'] = str(setting.active_bid_leader_id)
+    active_state = LiveAuctionState.objects.filter(is_active=True).first()
+    if auction_active and bidding_mode and active_state:
+        response['X-Active-Bid-Student-Id'] = str(active_state.student.id)
+        response['X-Active-Bid-Student-Name'] = active_state.student.name
+        response['X-Active-Bid-Amount'] = str(active_state.current_highest_amount)
+        response['X-Active-Bid-Leader-Id'] = str(active_state.current_highest_bidder.id if active_state.current_highest_bidder else '')
+        
+        if active_state.expires_at:
+            delta = active_state.expires_at - timezone.now()
+            time_left = max(0, delta.total_seconds())
+            response['X-Active-Bid-Time-Left'] = f"{time_left:.1f}"
+        else:
+            response['X-Active-Bid-Time-Left'] = "0"
             
-            if setting.active_bid_expires:
-                delta = setting.active_bid_expires - timezone.now()
-                time_left = max(0, delta.total_seconds())
-                response['X-Active-Bid-Time-Left'] = f"{time_left:.1f}"
-            else:
-                response['X-Active-Bid-Time-Left'] = "0"
-                
-            winner_user = User.objects.filter(id=setting.active_bid_leader_id).first()
-            winner_house = "Unknown"
-            if winner_user:
-                winner_house = winner_user.username
-                winner_profile = Student.objects.filter(user=winner_user).first()
-                if winner_profile and winner_profile.house:
-                    winner_house = winner_profile.house
-            response['X-Active-Bid-Winner-House'] = winner_house
+        winner_user = active_state.current_highest_bidder
+        winner_house = "Unknown"
+        if winner_user:
+            winner_house = winner_user.username
+            winner_profile = Student.objects.filter(user=winner_user).first()
+            if winner_profile and winner_profile.house:
+                winner_house = winner_profile.house
+        response['X-Active-Bid-Winner-House'] = winner_house
 
     return response
 
 @user_passes_test(is_leader)
 def skip_turn(request):
     if request.method == "POST":
-        setting = AdminSetting.objects.first()
+        setting = FestConfiguration.objects.first()
         if not setting or not setting.selection_round_active or setting.bidding_mode:
             return JsonResponse({'success': False, 'error': 'Round-robin selection mode is not active.'})
         
@@ -1038,6 +1270,11 @@ def clear_house_assignments(request):
         
         # Clear assignments and bid amounts
         Student.objects.update(house=None, amount=None, assigned_by=None, assigned_at=None)
+        
+        # Clear bidding states and logs
+        LiveAuctionState.objects.all().delete()
+        BidLog.objects.all().delete()
+        
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
@@ -1063,11 +1300,22 @@ def export_students_excel(request):
     ws.title = "Students"
 
     # Header row
-    ws.append(['Adno', 'Name', 'Grade', 'House'])
+    ws.append(['Adno', 'Name', 'Father', 'Locality', 'State', 'Village', 'Grade', 'House', 'Point', 'Bidded Amount'])
 
     # Data rows
-    for Student in Student.objects.all():
-        ws.append([Student.adno, Student.name, Student.grade, Student.house])
+    for student in Student.objects.all():
+        ws.append([
+            student.adno,
+            student.name,
+            student.father,
+            student.locality,
+            student.state,
+            student.village,
+            student.grade,
+            student.house,
+            student.point,
+            student.amount
+        ])
 
     # Prepare response
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -1112,19 +1360,143 @@ def assign_students(request):
     # Get categories present in this house's students
     categories = sorted(list(house_students.exclude(category__isnull=True).exclude(category="").values_list("category", flat=True).distinct()))
 
-    grids = []
-    # Build list of category grids
-    for cat in categories:
-        cat_students = list(house_students.filter(category=cat).order_by("name"))
-        cat_programs = list(Program.objects.filter(category=cat).order_by("name"))
-        if cat_students and cat_programs:
-            grids.append({
-                "category": cat,
-                "students": cat_students,
-                "programs": cat_programs,
-            })
+    dropdown_categories = list(categories)
+    if Program.objects.filter(category__iexact="all").exists():
+        dropdown_categories.append("All")
 
-    setting, _ = AdminSetting.objects.get_or_create(pk=1)
+    selected_category = request.GET.get("category")
+    if not selected_category and dropdown_categories:
+        selected_category = dropdown_categories[0]
+
+    all_rules_list = list(ParticipationRule.objects.all())
+    rules_by_category = {}
+    for r in all_rules_list:
+        cat_key = r.category.upper() if r.category else ""
+        if cat_key:
+            if cat_key not in rules_by_category:
+                rules_by_category[cat_key] = []
+            rules_by_category[cat_key].append(r)
+        
+    for student in house_students:
+        student.rules = rules_by_category.get(student.category.upper() if student.category else "", [])
+
+    def get_program_blocks(programs):
+        def sort_key(p):
+            m_val = 0 if (p.mode and p.mode.upper() == "STAGE") else 1
+            t_val = 0 if (p.type and p.type.upper() == "INDIVIDUAL") else 1
+            n_val = (p.name or "").lower()
+            return (m_val, t_val, n_val)
+        
+        sorted_programs = sorted(programs, key=sort_key)
+        for p in sorted_programs:
+            p.team_limit = p.max_entries_per_house if p.max_entries_per_house is not None else (int(p.count) if p.count and p.count.isdigit() else None)
+        
+        order = [
+            ("STAGE", "INDIVIDUAL"),
+            ("STAGE", "GROUP"),
+            ("NON STAGE", "INDIVIDUAL"),
+            ("NON STAGE", "GROUP"),
+        ]
+        
+        styles = {
+            ("STAGE", "INDIVIDUAL"): {
+                "label": "🎭 STAGE - INDIVIDUAL",
+                "color": "#c084fc",
+                "bg": "rgba(192, 132, 252, 0.08)",
+            },
+            ("STAGE", "GROUP"): {
+                "label": "👥 STAGE - GROUP",
+                "color": "#818cf8",
+                "bg": "rgba(129, 140, 248, 0.08)",
+            },
+            ("NON STAGE", "INDIVIDUAL"): {
+                "label": "📝 NON-STAGE - INDIVIDUAL",
+                "color": "#fb923c",
+                "bg": "rgba(251, 146, 60, 0.08)",
+            },
+            ("NON STAGE", "GROUP"): {
+                "label": "🤝 NON-STAGE - GROUP",
+                "color": "#2dd4bf",
+                "bg": "rgba(45, 212, 191, 0.08)",
+            },
+        }
+        
+        blocks = []
+        for key in order:
+            mode_name, type_name = key
+            block_programs = [
+                p for p in sorted_programs 
+                if (p.mode and p.mode.upper() == mode_name) and (p.type and p.type.upper() == type_name)
+            ]
+            if block_programs:
+                style = styles[key]
+                blocks.append({
+                    "label": style["label"],
+                    "color": style["color"],
+                    "bg": style["bg"],
+                    "colspan": len(block_programs),
+                    "programs": block_programs,
+                })
+        
+        other_programs = [
+            p for p in sorted_programs
+            if not any(
+                (p.mode and p.mode.upper() == m) and (p.type and p.type.upper() == t)
+                for m, t in order
+            )
+        ]
+        if other_programs:
+            blocks.append({
+                "label": "⚙️ OTHER PROGRAMS",
+                "color": "#94a3b8",
+                "bg": "rgba(148, 163, 184, 0.08)",
+                "colspan": len(other_programs),
+                "programs": other_programs,
+            })
+            
+        return sorted_programs, blocks
+
+    # Fetch all rules and group by category for quick lookup
+    rules_by_category = {}
+    for rule in ParticipationRule.objects.all():
+        cat_key = (rule.category or "").upper()
+        if cat_key not in rules_by_category:
+            rules_by_category[cat_key] = []
+        rules_by_category[cat_key].append(rule)
+
+    grids = []
+    # Build grid only for the selected category
+    if selected_category:
+        if selected_category.upper() == "ALL":
+            all_programs_raw = list(Program.objects.filter(category__iexact="all"))
+            if all_programs_raw and house_students.exists():
+                sorted_p, blocks = get_program_blocks(all_programs_raw)
+                all_students = list(house_students.order_by("name"))
+                for s in all_students:
+                    s_cat = (s.category or "").upper()
+                    s.rules = rules_by_category.get(s_cat, [])
+                grids.append({
+                    "category": "All",
+                    "students": all_students,
+                    "programs": sorted_p,
+                    "blocks": blocks,
+                })
+        else:
+            cat_students = list(house_students.filter(category=selected_category).order_by("name"))
+            cat_programs_raw = list(Program.objects.filter(category=selected_category))
+            if cat_students and cat_programs_raw:
+                sorted_p, blocks = get_program_blocks(cat_programs_raw)
+                for s in cat_students:
+                    s_cat = (s.category or "").upper()
+                    s.rules = rules_by_category.get(s_cat, [])
+                grids.append({
+                    "category": selected_category,
+                    "students": cat_students,
+                    "programs": sorted_p,
+                    "blocks": blocks,
+                })
+
+    setting, _ = FestConfiguration.objects.get_or_create(pk=1)
     candidate_registration_active = setting.candidate_registration_active
 
     # Build a dictionary of student assignments: student_id -> list of program_ids
@@ -1139,10 +1511,6 @@ def assign_students(request):
             messages.error(request, "Access denied: Candidate registration is currently closed.")
             return redirect("assign_students")
 
-        # Clear existing ProgramParticipant records for students of the current house
-        student_ids = list(house_students.values_list("id", flat=True))
-        ProgramParticipant.objects.filter(participant_id__in=student_ids).delete()
-
         # Parse request.POST keys
         to_create = []
         for key in request.POST:
@@ -1156,14 +1524,37 @@ def assign_students(request):
                 except (ValueError, IndexError):
                     continue
 
-        if to_create:
-            ProgramParticipant.objects.bulk_create(to_create)
+        from django.db import transaction
+        from django.core.exceptions import ValidationError
+        
+        try:
+            with transaction.atomic():
+                # Clear existing ProgramParticipant records only for students/programs of the selected category
+                if selected_category.upper() == "ALL":
+                    all_program_ids = list(Program.objects.filter(category__iexact="all").values_list("id", flat=True))
+                    student_ids = list(house_students.values_list("id", flat=True))
+                    ProgramParticipant.objects.filter(participant_id__in=student_ids, program_id__in=all_program_ids).delete()
+                else:
+                    cat_students = house_students.filter(category=selected_category)
+                    student_ids = list(cat_students.values_list("id", flat=True))
+                    ProgramParticipant.objects.filter(participant_id__in=student_ids).delete()
+                
+                # Save each one-by-one to run clean() validations
+                for pp in to_create:
+                    pp.save()
+        except ValidationError as e:
+            for message in e.messages:
+                messages.error(request, message)
+            if is_admin:
+                return redirect(f"/assign-students/?house={house_name}&category={selected_category}")
+            else:
+                return redirect(f"/assign-students/?category={selected_category}")
 
-        messages.success(request, f"Assignments for house '{house_name}' updated successfully.")
+        messages.success(request, f"Assignments for house '{house_name}' (category '{selected_category}') updated successfully.")
         if is_admin:
-            return redirect(f"/assign-students/?house={house_name}")
+            return redirect(f"/assign-students/?house={house_name}&category={selected_category}")
         else:
-            return redirect("assign_students")
+            return redirect(f"/assign-students/?category={selected_category}")
 
     return render(request, "assign_students.html", {
         "grids": grids,
@@ -1172,4 +1563,6 @@ def assign_students(request):
         "selected_house": house_name,
         "assignments": assignments,
         "candidate_registration_active": candidate_registration_active,
+        "dropdown_categories": dropdown_categories,
+        "selected_category": selected_category,
     })
